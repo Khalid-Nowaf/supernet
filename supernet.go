@@ -132,6 +132,7 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				currentNode.AddChildOrReplaceAt(newCidrNode, bit)
 			}
 			return // last bit
+
 		case NONE:
 			// if this the last bit, and there is no conflict
 			if currentDepth == depth {
@@ -141,7 +142,10 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				// we need to do the split at the end of constructing
 				// the newCidrNode
 				if supernetToSplitLater != nil {
-					splitSuperAroundSub(supernetToSplitLater, added, supernetToSplitLater.Metadata)
+					newCidrs := splitSuperAroundSub(supernetToSplitLater, added, supernetToSplitLater.Metadata)
+					for _, splittedCidr := range newCidrs {
+						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr))
+					}
 				}
 
 				// sanity check
@@ -149,11 +153,8 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 					panic("New CIDR is not added at the end")
 				}
 
-			} else {
-				// TODO: explain more why we add path node
-				// we always start by adding path node
-				// currentNode = currentNode.AddChildAtIfNotExist(newPathTrie(), bit)
 			}
+			// no-op
 		}
 	}
 }

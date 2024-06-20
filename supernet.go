@@ -26,6 +26,7 @@ const (
 )
 
 type Metadata struct {
+	isV6       bool
 	Priority   []uint8
 	Attributes map[string]string
 }
@@ -59,24 +60,35 @@ func (super *supernet) getAllV4Cidrs() []string {
 	return cidrs
 }
 
-func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
-	var currentNode *trie.BinaryTrie[Metadata]
-	var newCidrNode *trie.BinaryTrie[Metadata]
-
-	if ipnet.IP.To4() != nil {
-		currentNode = super.ipv4Cidrs
-	} else if ipnet.IP.To16() != nil {
-		currentNode = super.ipv6Cidrs
-	}
+// Setup function before insert
+// this code moved here to make insert more readable
+func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
+	currentNode *trie.BinaryTrie[Metadata],
+	newCidrNode *trie.BinaryTrie[Metadata],
+	path []int,
+	depth int,
+) {
 
 	copyMetadata := metadata
 	if copyMetadata == nil {
 		copyMetadata = NewDefaultMetadata()
 	}
 
+	if ipnet.IP.To4() != nil {
+		currentNode = super.ipv4Cidrs
+	} else if ipnet.IP.To16() != nil {
+		currentNode = super.ipv6Cidrs
+		metadata.isV6 = true
+	}
+
 	newCidrNode = trie.NewTrieWithMetadata(copyMetadata)
 
-	path, depth := cidrToBits(ipnet)
+	path, depth = cidrToBits(ipnet)
+	return
+}
+
+func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
+	currentNode, newCidrNode, path, depth := super.insertInit(ipnet, metadata)
 
 	var supernetToSplitLater *trie.BinaryTrie[Metadata]
 
@@ -205,7 +217,9 @@ func splitSuperAroundSub(super *trie.BinaryTrie[Metadata], sub *trie.BinaryTrie[
 		added := parent.AddChildAtIfNotExist(newCidr, current.GetPos()^1)
 		if added == newCidr {
 			splittedCidrs = append(splittedCidrs, added)
+			slog.Debug("(splitSuperAround) Added new a node at depth " + strconv.Itoa(added.GetDepth()) + " at pos " + strconv.Itoa(current.GetPos()^1))
 		}
+		slog.Debug("(splitSuperAround) Didn't added a new node at depth ", strconv.Itoa(added.GetDepth())+" at pos ", current.GetPos()^1)
 		// we break the propagation when we reach the super cidr
 	}, func(nextNode *trie.BinaryTrie[Metadata]) bool {
 		return nextNode.GetDepth() > super.GetDepth()
@@ -270,6 +284,14 @@ func bitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 	}
 
 }
+
+func NodeToCidr(t *trie.BinaryTrie[Metadata]) string {
+	if t.Metadata == nil {
+		panic("You can not get a CIDR for Path Node")
+	}
+	return bitsToCidr(t.GetPath(), t.Metadata.isV6).String()
+}
+
 func cidrToBits(ipnet *net.IPNet) ([]int, int) {
 	if ipnet == nil {
 		panic("IPNet is nil, validate the input")

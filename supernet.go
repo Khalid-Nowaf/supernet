@@ -129,7 +129,7 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 			// so if the new supernet wins over all conflicted
 			// we detach the rest of the tree by making it a leaf
 			if !anyConflictedCidrHasPriority {
-				currentNode.AddChildOrReplaceAt(newCidrNode, bit)
+				currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
 			}
 			return // last bit
 
@@ -165,8 +165,8 @@ func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int)
 	if currentNode.Metadata == nil {
 		// if this is the last node,
 		// we know other cidrs under us exists
-		if targetedDepth == currentNode.GetDepth() && !currentNode.IsLeaf() {
-			return ConflictType(SUPERCIR)
+		if targetedDepth < currentNode.GetDepth() && !currentNode.IsLeaf() {
+			return ConflictType(SUPERCIDR)
 		} else {
 			return ConflictType(NONE)
 		}

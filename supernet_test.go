@@ -52,6 +52,14 @@ func TestBitsToCidr(t *testing.T) {
 	bits, _ := cidrToBits(cidr)
 	assert.Equal(t, cidr.String(), bitsToCidr(bits, false).String())
 
+	_, cidr, _ = net.ParseCIDR("192.168.1.0/24")
+	bits, _ = cidrToBits(cidr)
+	assert.Equal(t, cidr.String(), bitsToCidr(bits, false).String())
+
+	_, cidr, _ = net.ParseCIDR("192.168.2.0/23")
+	bits, _ = cidrToBits(cidr)
+	assert.Equal(t, cidr.String(), bitsToCidr(bits, false).String())
+
 	_, cidr, _ = net.ParseCIDR("2001:db8::ff00:42:8329/16")
 	bits, _ = cidrToBits(cidr)
 	assert.Equal(t, cidr.String(), bitsToCidr(bits, true).String())

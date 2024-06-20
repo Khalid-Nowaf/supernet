@@ -198,10 +198,16 @@ func bitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 	for iByte := 0; iByte < maxBytes; iByte++ {
 		ipByte = 0
 		maskByte = 0
-		for i := 0; i < 8 && currentBit <= bitsLen; i++ {
+		for i := 0; i < 8; i++ {
+			if currentBit <= bitsLen {
 			ipByte = ipByte<<1 | byte(bits[currentBit])
 			maskByte = maskByte<<1 | byte(1)
 			currentBit++
+			} else {
+				ipByte = ipByte << 1
+				maskByte = maskByte << 1
+			}
+
 		}
 		ipBytes = append(ipBytes, ipByte)
 		maskBytes = append(maskBytes, maskByte)

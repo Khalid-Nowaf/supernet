@@ -126,12 +126,9 @@ func (t *Trie[T]) forEachStepDown(f func(t *Trie[T]), while func(t *Trie[T]) boo
 // will return the original node t
 func (t *Trie[T]) ForEachStepUp(f func(t *Trie[T]), while func(t *Trie[T]) bool) *Trie[T] {
 	current := t
-	for current.Parent != nil {
-		if while == nil || while(t) {
-			f(current)
-			current = current.Parent
-		}
-
+	for current.Parent != nil && (while == nil || while(current)) {
+		f(current)
+		current = current.Parent
 	}
 	return t
 }

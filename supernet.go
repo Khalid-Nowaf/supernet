@@ -78,7 +78,7 @@ func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
 		currentNode = super.ipv4Cidrs
 	} else if ipnet.IP.To16() != nil {
 		currentNode = super.ipv6Cidrs
-		metadata.isV6 = true
+		copyMetadata.isV6 = true
 	}
 
 	newCidrNode = trie.NewTrieWithMetadata(copyMetadata)
@@ -183,7 +183,7 @@ func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int)
 			return ConflictType(NONE)
 		}
 	} else {
-		if currentNode.GetDepth() == targetedDepth {
+		if currentNode.GetDepth()-1 == targetedDepth {
 			return ConflictType(EQUAL_CIDR)
 		}
 		if currentNode.GetDepth() < targetedDepth {

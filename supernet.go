@@ -129,21 +129,23 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 }
 
 func isThereAConflict(currentNode *trie.Trie[Metadata], targetedDepth int) ConflictType {
-	// new brand node
+	// new brand node, or path node
 	if currentNode.Metadata == nil {
 		return ConflictType(NONE)
 	}
 
-	if currentNode.IsLeaf() {
-		if currentNode.GetDepth() == targetedDepth && currentNode.Metadata != nil {
+	if currentNode.GetDepth() == targetedDepth {
 			return ConflictType(EQUAL_CIDR)
-		} else if currentNode.GetDepth() > targetedDepth {
-			return ConflictType(SUBCIDR)
 		}
-	} else if targetedDepth == currentNode.GetDepth() {
+	if currentNode.GetDepth() < targetedDepth {
 		return ConflictType(SUBCIDR)
 	}
-	return ConflictType(NONE)
+
+	if targetedDepth > currentNode.GetDepth() {
+		return ConflictType(SUPERCIR)
+	}
+	// sanity check
+	panic("Edge Case has not been covered (func isThereAConflict)")
 }
 
 func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata]) []*trie.Trie[Metadata] {

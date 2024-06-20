@@ -92,6 +92,10 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				// since, we do not insert all the bits for newCidrNode
 				// we will deal with conflict resolution later at the last bit
 				supernetToSplitLater = currentNode
+			} else {
+				// since the currentNode is supernet and have a higher priority
+				// we will simply ignore the inserting it
+				return
 			}
 		case SUPERCIR:
 			conflictedCidrs := currentNode.GetLeafs()

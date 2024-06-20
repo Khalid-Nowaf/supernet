@@ -153,12 +153,21 @@ func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata]) [
 		// we try to branch (if the current at 0 we go to 1 and vice versa)
 		// using XOR to add a new cidr as sibling
 		// if the the sibling node exist we ignore the insertion
-		added := current.Parent.AddChildAtIfNotExist(super, current.GetPos()^1)
-		if added == super {
+		parent := current.Parent
+
+		newCidr := trie.NewTrieWithMetadata(&Metadata{
+			Priority: super.Metadata.Priority,
+			// TODO: add this
+			Attributes: super.Metadata.Attributes,
+		})
+		newCidr.Metadata.Attributes["splitted"] = super.Metadata.Attributes["cidr"]
+
+		added := parent.AddChildAtIfNotExist(newCidr, current.GetPos()^1)
+		if added == newCidr {
 			splittedCidrs = append(splittedCidrs, added)
 		}
 		// we break the propagation when we reach the super cidr
-	}, func(currency *trie.Trie[Metadata]) bool { return currency != super })
+	}, func(nextNode *trie.Trie[Metadata]) bool { return nextNode.GetDepth() > super.GetDepth() })
 
 	return splittedCidrs
 

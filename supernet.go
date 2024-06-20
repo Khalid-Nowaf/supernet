@@ -1,7 +1,9 @@
 package supernet
 
 import (
+	"log/slog"
 	"net"
+	"strconv"
 
 	"github.com/khalid_nowaf/supernet/pkg/trie"
 )
@@ -11,7 +13,7 @@ type ConflictType int
 const (
 	EQUAL_CIDR ConflictType = iota
 	SUBCIDR
-	SUPERCIR
+	SUPERCIDR
 	NONE
 )
 
@@ -82,22 +84,32 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 		currentNode = currentNode.AddChildAtIfNotExist(newPathTrie(), bit)
 		// we check conflict the child at the next bit
 		switch isThereAConflict(currentNode, depth) {
+
 		case EQUAL_CIDR:
+			slog.Info("Conflict detected (EQUAL_CIDR)")
 			if isNewHasPriority := comparator(newCidrNode, currentNode); isNewHasPriority {
-				currentNode.AddChildOrReplaceAt(newCidrNode, bit)
+				currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
+				slog.Info("New CIDR: " + ipnet.String() + " won over and replaced CIDR:" + NodeToCidr(currentNode))
 			}
+			slog.Info("New CIDR: " + ipnet.String() + " lost, and will be ignored in favor of CIDR:" + NodeToCidr(currentNode))
 			return // this is the last bit
+
 		case SUBCIDR:
+			slog.Info("Conflict detected (SUBCIDR)")
 			if isNewHasPriority := comparator(newCidrNode, currentNode); isNewHasPriority {
 				// since, we do not insert all the bits for newCidrNode
 				// we will deal with conflict resolution later at the last bit
 				supernetToSplitLater = currentNode
+				slog.Info("NEW CIDR: " + ipnet.String() + "won over and will split CIDR: " + NodeToCidr(currentNode))
 			} else {
 				// since the currentNode is supernet and have a higher priority
 				// we will simply ignore the inserting it
+				slog.Info("New CIDR: " + ipnet.String() + " lost, and will be ignored in favor of CIDR:" + NodeToCidr(currentNode))
 				return
 			}
-		case SUPERCIR:
+
+		case SUPERCIDR:
+			slog.Info("Conflict detected (SUPERCIDR)")
 			// we setup the new cidr, as marker, for now
 			// it get splitted later or stay as is
 			currentNode.Metadata = newCidrNode.Metadata
@@ -106,11 +118,14 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 			anyConflictedCidrHasPriority := false
 			for _, conflictedCidr := range conflictedCidrs {
 				if conflictedCidrHasPriority := comparator(conflictedCidr, newCidrNode); conflictedCidrHasPriority {
-					splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
+					slog.Info("New CIDR: " + ipnet.String() + " lost, and will be split around CIDR:" + NodeToCidr(currentNode))
+					newCidrs := splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
+					for _, splittedCidr := range newCidrs {
+						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr))
+					}
 					anyConflictedCidrHasPriority = true
 				}
 			}
-
 			// so if the new supernet wins over all conflicted
 			// we detach the rest of the tree by making it a leaf
 			if !anyConflictedCidrHasPriority {

@@ -136,6 +136,73 @@ func TestSubConflictLowPriority(t *testing.T) {
 	}, root.getAllV4Cidrs())
 }
 
+func TestSplitSuperAroundSub(t *testing.T) {
+	//TODO: more testing is needed
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("1.0.0.0/8")
+
+	root.InsertCidr(super, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
+	// 0000 0001 /8
+	subNode := root.ipv4Cidrs.GetLeafs()[0]
+	// 0000 0 /5
+	superNode := subNode.Parent.Parent.Parent
+
+	newPath := [][]int{}
+	for _, newNode := range splitSuperAroundSub(superNode, subNode, &Metadata{}) {
+		newPath = append(newPath, newNode.GetPath())
+	}
+
+	assert.Equal(t, len(newPath), subNode.GetDepth()-superNode.GetDepth())
+	assert.ElementsMatch(t, newPath, [][]int{
+		{0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 1},
+		{0, 0, 0, 0, 0, 1},
+	})
+
+}
+
+func TestSuperConflictLowPriority(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
+
+	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
+	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+
+	allCidrs := root.getAllV4Cidrs()
+
+	assert.Equal(t, 24-16+1, len(allCidrs))
+
+	assert.ElementsMatch(t, []string{
+		"192.168.0.0/24",
+		"192.168.1.0/24",
+		"192.168.2.0/23",
+		"192.168.4.0/22",
+		"192.168.8.0/21",
+		"192.168.16.0/20",
+		"192.168.32.0/19",
+		"192.168.64.0/18",
+		"192.168.128.0/17",
+	}, allCidrs)
+}
+
+func TestSuperConflictHighPriority(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
+
+	root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(sub.String())})
+	root.InsertCidr(super, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
+
+	allCidrs := root.getAllV4Cidrs()
+
+	assert.Equal(t, 1, len(allCidrs))
+
+	assert.ElementsMatch(t, []string{
+		"192.168.0.0/16",
+	}, allCidrs)
+}
+
 func TestSubConflictHighPriority(t *testing.T) {
 	root := NewSupernet()
 	_, super, _ := net.ParseCIDR("192.168.0.0/16")
@@ -144,6 +211,9 @@ func TestSubConflictHighPriority(t *testing.T) {
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 
+	allCidrs := root.getAllV4Cidrs()
+
+	assert.Equal(t, len(allCidrs), 24-16+1)
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/24",
 		"192.168.1.0/24",

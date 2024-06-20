@@ -98,14 +98,25 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				return
 			}
 		case SUPERCIR:
+			// we setup the new cidr, as marker, for now
+			// it get splitted later or stay as is
+			currentNode.Metadata = newCidrNode.Metadata
 			conflictedCidrs := currentNode.GetLeafs()
 
+			anyConflictedCidrHasPriority := false
 			for _, conflictedCidr := range conflictedCidrs {
 				if conflictedCidrHasPriority := comparator(conflictedCidr, newCidrNode); conflictedCidrHasPriority {
-					splitSuperAroundSub(newCidrNode, conflictedCidr)
+					splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
+					anyConflictedCidrHasPriority = true
 				}
-				return // this is the last bit
 			}
+
+			// so if the new supernet wins over all conflicted
+			// we detach the rest of the tree by making it a leaf
+			if !anyConflictedCidrHasPriority {
+				currentNode.AddChildOrReplaceAt(newCidrNode, bit)
+			}
+			return // last bit
 		case NONE:
 			// if this the last bit, and there is no conflict
 			if currentDepth == depth {
@@ -115,7 +126,7 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				// we need to do the split at the end of constructing
 				// the newCidrNode
 				if supernetToSplitLater != nil {
-					splitSuperAroundSub(supernetToSplitLater, added)
+					splitSuperAroundSub(supernetToSplitLater, added, supernetToSplitLater.Metadata)
 				}
 
 				// sanity check
@@ -133,26 +144,34 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 }
 
 func isThereAConflict(currentNode *trie.Trie[Metadata], targetedDepth int) ConflictType {
+
 	// new brand node, or path node
 	if currentNode.Metadata == nil {
-		return ConflictType(NONE)
+		// if this is the last node,
+		// we know other cidrs under us exists
+		if targetedDepth == currentNode.GetDepth() && !currentNode.IsLeaf() {
+			return ConflictType(SUPERCIR)
+		} else {
+			return ConflictType(NONE)
+		}
+	} else {
+		if currentNode.GetDepth() == targetedDepth {
+			return ConflictType(EQUAL_CIDR)
+		}
+		if currentNode.GetDepth() < targetedDepth {
+			return ConflictType(SUBCIDR)
+		}
 	}
 
-	if currentNode.GetDepth() == targetedDepth {
-		return ConflictType(EQUAL_CIDR)
-	}
-	if currentNode.GetDepth() < targetedDepth {
-		return ConflictType(SUBCIDR)
-	}
-
-	if targetedDepth > currentNode.GetDepth() {
-		return ConflictType(SUPERCIR)
-	}
 	// sanity check
 	panic("Edge Case has not been covered (func isThereAConflict)")
 }
 
-func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata]) []*trie.Trie[Metadata] {
+func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata], splittedCidrMetadata *Metadata) []*trie.Trie[Metadata] {
+
+	if splittedCidrMetadata == nil {
+		panic("you can not split a supernet without metadata")
+	}
 	splittedCidrs := []*trie.Trie[Metadata]{}
 
 	sub.ForEachStepUp(func(current *trie.Trie[Metadata]) {
@@ -162,18 +181,19 @@ func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata]) [
 		parent := current.Parent
 
 		newCidr := trie.NewTrieWithMetadata(&Metadata{
-			Priority: super.Metadata.Priority,
+			Priority: splittedCidrMetadata.Priority,
 			// TODO: add this
-			Attributes: super.Metadata.Attributes,
+			Attributes: splittedCidrMetadata.Attributes,
 		})
-		newCidr.Metadata.Attributes["splitted"] = super.Metadata.Attributes["cidr"]
 
 		added := parent.AddChildAtIfNotExist(newCidr, current.GetPos()^1)
 		if added == newCidr {
 			splittedCidrs = append(splittedCidrs, added)
 		}
 		// we break the propagation when we reach the super cidr
-	}, func(nextNode *trie.Trie[Metadata]) bool { return nextNode.GetDepth() > super.GetDepth() })
+	}, func(nextNode *trie.Trie[Metadata]) bool {
+		return nextNode.GetDepth() > super.GetDepth()
+	})
 
 	return splittedCidrs
 

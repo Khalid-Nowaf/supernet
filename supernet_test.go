@@ -86,6 +86,7 @@ func TestCompactor(t *testing.T) {
 	b.Metadata = &Metadata{Priority: []uint8{0, 1, 0}}
 	assert.False(t, comparator(a, b))
 }
+
 func TestInsertSimple(t *testing.T) {
 	super := NewSupernet()
 	_, cidr, _ := net.ParseCIDR("1.1.1.1/8")
@@ -128,8 +129,18 @@ func TestSuperConflict(t *testing.T) {
 
 	super.InsertCidr(cidr1, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(cidr1.String())})
 	super.InsertCidr(cidr2, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(cidr2.String())})
-	assert.Equal(t, 8, len(super.ipv4Cidrs.GetLeafsPaths()))
-	assert.ElementsMatch(t, []string{}, super.getAllV4Cidrs())
+
+	assert.ElementsMatch(t, []string{
+		"192.168.0.0/24",
+		"192.168.1.0/24",
+		"192.168.2.0/23",
+		"192.168.4.0/22",
+		"192.168.8.0/21",
+		"192.168.16.0/20",
+		"192.168.32.0/19",
+		"192.168.64.0/18",
+		"192.168.128.0/17",
+	}, super.getAllV4Cidrs())
 }
 
 func makeCidrAtrr(cidr string) map[string]string {

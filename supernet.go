@@ -106,16 +106,16 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 			// if this the last bit, and there is no conflict
 			if currentDepth == depth {
 				// we replaced the current path node, with new cidr
-				currentNode = currentNode.AddChildOrReplaceAt(newCidrNode, bit)
+				added := currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
 				// when the newCidr is a subnet of supernet
 				// we need to do the split at the end of constructing
 				// the newCidrNode
 				if supernetToSplitLater != nil {
-					splitSuperAroundSub(supernetToSplitLater, currentNode)
+					splitSuperAroundSub(supernetToSplitLater, added)
 				}
 
 				// sanity check
-				if currentNode != newCidrNode {
+				if added != newCidrNode {
 					panic("New CIDR is not added at the end")
 				}
 
@@ -135,8 +135,8 @@ func isThereAConflict(currentNode *trie.Trie[Metadata], targetedDepth int) Confl
 	}
 
 	if currentNode.GetDepth() == targetedDepth {
-			return ConflictType(EQUAL_CIDR)
-		}
+		return ConflictType(EQUAL_CIDR)
+	}
 	if currentNode.GetDepth() < targetedDepth {
 		return ConflictType(SUBCIDR)
 	}
@@ -211,9 +211,9 @@ func bitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 		maskByte = 0
 		for i := 0; i < 8; i++ {
 			if currentBit <= bitsLen {
-			ipByte = ipByte<<1 | byte(bits[currentBit])
-			maskByte = maskByte<<1 | byte(1)
-			currentBit++
+				ipByte = ipByte<<1 | byte(bits[currentBit])
+				maskByte = maskByte<<1 | byte(1)
+				currentBit++
 			} else {
 				ipByte = ipByte << 1
 				maskByte = maskByte << 1

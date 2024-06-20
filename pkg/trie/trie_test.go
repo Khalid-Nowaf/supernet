@@ -65,7 +65,7 @@ func TestForEachChild(t *testing.T) {
 	root.AddChildAtIfNotExist(NewTrie(), ONE)
 
 	var count int
-	root.ForEachChild(func(t *Trie[string]) {
+	root.ForEachChild(func(t *BinaryTrie[string]) {
 		count++
 	})
 
@@ -75,7 +75,7 @@ func TestForEachChild(t *testing.T) {
 // TestForEachStepDown verifies that each node in the trie can be visited and modified.
 func TestForEachStepDown(t *testing.T) {
 	visitedPaths := ""
-	var traverseAndVerify func(tr *Trie[string])
+	var traverseAndVerify func(tr *BinaryTrie[string])
 
 	paths := []string{"001", "0010", "1010", "101010101010", "111111"}
 
@@ -83,15 +83,15 @@ func TestForEachStepDown(t *testing.T) {
 	generateTrieAs(paths, root)
 
 	// Mark each visited node with "visited" in its metadata.
-	root.ForEachStepDown(func(tr *Trie[string]) {
+	root.ForEachStepDown(func(tr *BinaryTrie[string]) {
 		tr.Metadata = strPtr("visited")
 	}, nil)
 
-	traverseAndVerify = func(tr *Trie[string]) {
+	traverseAndVerify = func(tr *BinaryTrie[string]) {
 		if tr == nil {
 			return
 		}
-		tr.ForEachChild(func(c *Trie[string]) {
+		tr.ForEachChild(func(c *BinaryTrie[string]) {
 			visitedPaths += strconv.Itoa(c.GetPos())
 			assert.Contains(t, *c.Metadata, "visited", "Metadata should contain 'visited'")
 			traverseAndVerify(c)
@@ -200,7 +200,7 @@ func BenchmarkGetLeafPaths(b *testing.B) {
 }
 
 // generateTrieAs constructs a trie based on provided paths and updates it to contain metadata indicating its creation path.
-func generateTrieAs(paths []string, trie *Trie[string]) {
+func generateTrieAs(paths []string, trie *BinaryTrie[string]) {
 	for _, path := range paths {
 		current := trie
 		for _, bit := range path {

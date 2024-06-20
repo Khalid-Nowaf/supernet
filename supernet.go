@@ -34,19 +34,19 @@ func NewDefaultMetadata() *Metadata {
 
 type supernet struct {
 	seedID    uint64
-	ipv4Cidrs *trie.Trie[Metadata]
-	ipv6Cidrs *trie.Trie[Metadata]
+	ipv4Cidrs *trie.BinaryTrie[Metadata]
+	ipv6Cidrs *trie.BinaryTrie[Metadata]
 }
 
 func NewSupernet() *supernet {
 	return &supernet{
-		ipv4Cidrs: &trie.Trie[Metadata]{},
-		ipv6Cidrs: &trie.Trie[Metadata]{},
+		ipv4Cidrs: &trie.BinaryTrie[Metadata]{},
+		ipv6Cidrs: &trie.BinaryTrie[Metadata]{},
 	}
 }
 
-func newPathTrie() *trie.Trie[Metadata] {
-	return &trie.Trie[Metadata]{}
+func newPathTrie() *trie.BinaryTrie[Metadata] {
+	return &trie.BinaryTrie[Metadata]{}
 }
 
 func (super *supernet) getAllV4Cidrs() []string {
@@ -58,8 +58,8 @@ func (super *supernet) getAllV4Cidrs() []string {
 }
 
 func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
-	var currentNode *trie.Trie[Metadata]
-	var newCidrNode *trie.Trie[Metadata]
+	var currentNode *trie.BinaryTrie[Metadata]
+	var newCidrNode *trie.BinaryTrie[Metadata]
 
 	if ipnet.IP.To4() != nil {
 		currentNode = super.ipv4Cidrs
@@ -76,7 +76,7 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 
 	path, depth := cidrToBits(ipnet)
 
-	var supernetToSplitLater *trie.Trie[Metadata]
+	var supernetToSplitLater *trie.BinaryTrie[Metadata]
 
 	for currentDepth, bit := range path {
 		currentNode = currentNode.AddChildAtIfNotExist(newPathTrie(), bit)
@@ -143,7 +143,7 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 	}
 }
 
-func isThereAConflict(currentNode *trie.Trie[Metadata], targetedDepth int) ConflictType {
+func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int) ConflictType {
 
 	// new brand node, or path node
 	if currentNode.Metadata == nil {
@@ -167,14 +167,14 @@ func isThereAConflict(currentNode *trie.Trie[Metadata], targetedDepth int) Confl
 	panic("Edge Case has not been covered (func isThereAConflict)")
 }
 
-func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata], splittedCidrMetadata *Metadata) []*trie.Trie[Metadata] {
+func splitSuperAroundSub(super *trie.BinaryTrie[Metadata], sub *trie.BinaryTrie[Metadata], splittedCidrMetadata *Metadata) []*trie.BinaryTrie[Metadata] {
 
 	if splittedCidrMetadata == nil {
 		panic("you can not split a supernet without metadata")
 	}
-	splittedCidrs := []*trie.Trie[Metadata]{}
+	splittedCidrs := []*trie.BinaryTrie[Metadata]{}
 
-	sub.ForEachStepUp(func(current *trie.Trie[Metadata]) {
+	sub.ForEachStepUp(func(current *trie.BinaryTrie[Metadata]) {
 		// we try to branch (if the current at 0 we go to 1 and vice versa)
 		// using XOR to add a new cidr as sibling
 		// if the the sibling node exist we ignore the insertion
@@ -191,7 +191,7 @@ func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata], s
 			splittedCidrs = append(splittedCidrs, added)
 		}
 		// we break the propagation when we reach the super cidr
-	}, func(nextNode *trie.Trie[Metadata]) bool {
+	}, func(nextNode *trie.BinaryTrie[Metadata]) bool {
 		return nextNode.GetDepth() > super.GetDepth()
 	})
 
@@ -205,7 +205,7 @@ func splitSuperAroundSub(super *trie.Trie[Metadata], sub *trie.Trie[Metadata], s
 
 // will return true of A has or equal propriety to B
 // note: we assume A is a new, and B is old therefore we return true if they are equal
-func comparator(a *trie.Trie[Metadata], b *trie.Trie[Metadata]) bool {
+func comparator(a *trie.BinaryTrie[Metadata], b *trie.BinaryTrie[Metadata]) bool {
 	// we assume a is greater, so of they are equal we return true
 	result := true
 	// what if [=,-]

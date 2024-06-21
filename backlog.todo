@@ -1,0 +1,7 @@
+## Backlog:
+    ☐ @Refactor(Trie): to be an interface or more genric
+    ☐ @Feat(Trie): Optimize feature to convert Trie to LCTrie
+    ☐ @Refactor(Supernet): extract binray oprations to saparte package
+    ☐ @Refactor(Supernet): extract IPNet wrapping logic to file or a package
+    ☐ @Feat(Supernet): Build cmd `supernet` that take a file and reslove the conflict
+    ☐ @Feat(Supernet): add a report function to report what is conflicted and how it was resloved

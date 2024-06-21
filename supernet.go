@@ -10,19 +10,13 @@ import (
 )
 
 // ConflictType defines the types of conflicts that may arise during the insertion of new CIDRs into a trie structure.
-//
-// Types of conflicts:
-//   - EQUAL_CIDR: Indicates a conflict where the new CIDR exactly matches an existing CIDR in the trie.
-//   - SUBCIDR: Indicates the new CIDR is a subrange of an existing CIDR in the trie.
-//   - SUPERCIDR: Indicates the new CIDR encompasses one or more existing CIDRs in the trie.
-//   - NONE: Indicates no conflict with existing CIDRs in the trie.
 type ConflictType int
 
 const (
-	EQUAL_CIDR ConflictType = iota
-	SUBCIDR
-	SUPERCIDR
-	NONE
+	EQUAL_CIDR ConflictType = iota // Indicates a conflict where the new CIDR exactly matches an existing CIDR in the trie.
+	SUBCIDR                        // Indicates the new CIDR is a subrange of an existing CIDR in the trie.
+	SUPERCIDR                      // Indicates the new CIDR encompasses one or more existing CIDRs in the trie.
+	NONE                           // Indicates no conflict with existing CIDRs in the trie
 )
 
 //	holds the properties for a CIDR node within a trie, including IP version, priority, and additional attributes.
@@ -127,6 +121,11 @@ func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
 
 	// Convert the CIDR to a binary path and calculate the depth.
 	path, depth = cidrToBits(ipnet)
+
+	// we add cidrs mask as the last priority
+	// if two conflicted CIDRs has the same priority
+	// we favor the smaller CIDR
+	copyMetadata.Priority = append(copyMetadata.Priority, uint8(depth))
 	return currentNode, newCidrNode, path, depth
 }
 

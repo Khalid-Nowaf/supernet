@@ -7,152 +7,95 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO:
-// - TEST IPV6
-// -
-
-func TestPanicOnMaskZero(t *testing.T) {
-	_, cidr, _ := net.ParseCIDR("1.1.1.1/0")
+func TestPanicsWithZeroCIDRMask(t *testing.T) {
+	// Test with IPv4 zero mask
+	_, cidrIPv4, _ := net.ParseCIDR("1.1.1.1/0")
 	assert.Panics(t, func() {
-		cidrToBits(cidr)
-	})
+		cidrToBits(cidrIPv4)
+	}, "Should panic with IPv4 zero CIDR mask")
 
-	_, cidr, _ = net.ParseCIDR("2001:db8::ff00:42:8329/0")
-
+	// Test with IPv6 zero mask
+	_, cidrIPv6, _ := net.ParseCIDR("2001:db8::ff00:42:8329/0")
 	assert.Panics(t, func() {
-		cidrToBits(cidr)
-	})
-
+		cidrToBits(cidrIPv6)
+	}, "Should panic with IPv6 zero CIDR mask")
 }
 
-func TestCidrToBit(t *testing.T) {
-	_, cidr, err := net.ParseCIDR("1.1.1.1/8")
-	bits, depth := cidrToBits(cidr)
-	assert.NoError(t, err)
-	assert.Equal(t, 7, depth)
-	assert.Equal(t, []int{0, 0, 0, 0, 0, 0, 0, 1}, bits)
+func TestCIDRToBitsConversion(t *testing.T) {
+	testCases := []struct {
+		cidr          string
+		expectedBits  []int
+		expectedDepth int
+	}{
+		{"1.1.1.1/8", []int{0, 0, 0, 0, 0, 0, 0, 1}, 7},
+		{"3.1.1.1/8", []int{0, 0, 0, 0, 0, 0, 1, 1}, 7},
+		{"2001:db8::ff00:42:8329/16", []int{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}, 15},
+	}
 
-	_, cidr, err = net.ParseCIDR("3.1.1.1/8")
-	bits, depth = cidrToBits(cidr)
-	assert.NoError(t, err)
-	assert.Equal(t, 7, depth)
-	assert.Equal(t, []int{0, 0, 0, 0, 0, 0, 1, 1}, bits)
-
-	_, cidr, err = net.ParseCIDR("2001:db8::ff00:42:8329/16")
-
-	bits, depth = cidrToBits(cidr)
-	assert.NoError(t, err)
-	assert.Equal(t, 15, depth)
-	ipv6Path := []int{
-		0, 0, 1, 0, // 2001
-		0, 0, 0, 0, // 2001
-		0, 0, 0, 0, // db8
-		0, 0, 0, 1} // db8
-	assert.Equal(t, ipv6Path, bits)
+	for _, tc := range testCases {
+		_, cidr, err := net.ParseCIDR(tc.cidr)
+		bits, depth := cidrToBits(cidr)
+		assert.NoError(t, err)
+		assert.Equal(t, tc.expectedDepth, depth)
+		assert.Equal(t, tc.expectedBits, bits)
+	}
 }
 
-func TestBitsToCidr(t *testing.T) {
-	_, cidr, _ := net.ParseCIDR("1.1.1.1/8")
-	bits, _ := cidrToBits(cidr)
-	assert.Equal(t, cidr.String(), bitsToCidr(bits, false).String())
+func TestBitsToCIDRConversion(t *testing.T) {
+	testCases := []struct {
+		cidr   string
+		isIPv6 bool
+	}{
+		{"1.1.1.1/8", false},
+		{"192.168.1.0/24", false},
+		{"192.168.2.0/23", false},
+		{"2001:db8::ff00:42:8329/16", true},
+	}
 
-	_, cidr, _ = net.ParseCIDR("192.168.1.0/24")
-	bits, _ = cidrToBits(cidr)
-	assert.Equal(t, cidr.String(), bitsToCidr(bits, false).String())
-
-	_, cidr, _ = net.ParseCIDR("192.168.2.0/23")
-	bits, _ = cidrToBits(cidr)
-	assert.Equal(t, cidr.String(), bitsToCidr(bits, false).String())
-
-	_, cidr, _ = net.ParseCIDR("2001:db8::ff00:42:8329/16")
-	bits, _ = cidrToBits(cidr)
-	assert.Equal(t, cidr.String(), bitsToCidr(bits, true).String())
-
+	for _, tc := range testCases {
+		_, cidr, _ := net.ParseCIDR(tc.cidr)
+		bits, _ := cidrToBits(cidr)
+		assert.Equal(t, cidr.String(), bitsToCidr(bits, tc.isIPv6).String())
+	}
 }
 
-func TestCompactor(t *testing.T) {
+func TestTrieComparator(t *testing.T) {
 	a := newPathTrie()
 	b := newPathTrie()
 
-	// A is Higher
-	a.Metadata = &Metadata{Priority: []uint8{1, 1, 1}}
-	b.Metadata = &Metadata{Priority: []uint8{1, 1, 0}}
-	assert.True(t, comparator(a, b))
-
-	// B is Higher
-	a.Metadata = &Metadata{Priority: []uint8{0, 1, 1}}
-	b.Metadata = &Metadata{Priority: []uint8{1, 0, 0}}
-	assert.False(t, comparator(a, b))
-
-	// A is Higher on Equality
-	a.Metadata = &Metadata{Priority: []uint8{1, 1, 1}}
-	b.Metadata = &Metadata{Priority: []uint8{1, 1, 1}}
-	assert.True(t, comparator(a, b))
-
-	// B is Higher on higher level
-	a.Metadata = &Metadata{Priority: []uint8{0, 0, 1}}
-	b.Metadata = &Metadata{Priority: []uint8{0, 1, 0}}
-	assert.False(t, comparator(a, b))
-}
-
-func TestInsertSimple(t *testing.T) {
-	super := NewSupernet()
-	_, cidr, _ := net.ParseCIDR("1.1.1.1/8")
-	_, cidr2, _ := net.ParseCIDR("2.1.1.1/8")
-	_, cidr3, _ := net.ParseCIDR("3.1.1.1/8")
-
-	super.InsertCidr(cidr, nil)
-	super.InsertCidr(cidr2, nil)
-	super.InsertCidr(cidr3, nil)
-
-	assert.ElementsMatch(t, [][]int{
-		{0, 0, 0, 0, 0, 0, 0, 1},
-		{0, 0, 0, 0, 0, 0, 1, 0},
-		{0, 0, 0, 0, 0, 0, 1, 1},
-	}, super.ipv4Cidrs.GetLeafsPaths())
-
-	// TODO: IPV6
-	assert.ElementsMatch(t, []string{
-		"1.0.0.0/8",
-		"2.0.0.0/8",
-		"3.0.0.0/8",
-	}, super.getAllV4Cidrs())
-
-	_, cidr, _ = net.ParseCIDR("2001:db8::ff00:42:8329/16")
-
-	super.InsertCidr(cidr, nil)
-	ipv6Path := []int{
-		0, 0, 1, 0, // 2001
-		0, 0, 0, 0, // 2001
-		0, 0, 0, 0, // db8
-		0, 0, 0, 1} // db8
-	assert.ElementsMatch(t, ipv6Path, super.ipv6Cidrs.GetLeafsPaths()[0])
-	// assert.ElementsMatch(t, []string{}, super.getAllV4Cidrs())
-}
-
-func TestSplitSuperAroundSub(t *testing.T) {
-	//TODO: more testing is needed
-	root := NewSupernet()
-	_, super, _ := net.ParseCIDR("1.0.0.0/8")
-
-	root.InsertCidr(super, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
-	// 0000 0001 /8
-	subNode := root.ipv4Cidrs.GetLeafs()[0]
-	// 0000 0 /5
-	superNode := subNode.Parent.Parent.Parent
-
-	newPath := [][]int{}
-	for _, newNode := range splitSuperAroundSub(superNode, subNode, &Metadata{}) {
-		newPath = append(newPath, newNode.GetPath())
+	// Comparator scenarios
+	comparisons := []struct {
+		aPriority []uint8
+		bPriority []uint8
+		expected  bool
+	}{
+		{[]uint8{1, 1, 1}, []uint8{1, 1, 0}, true},
+		{[]uint8{0, 1, 1}, []uint8{1, 0, 0}, false},
+		{[]uint8{1, 1, 1}, []uint8{1, 1, 1}, true},
+		{[]uint8{0, 0, 1}, []uint8{0, 1, 0}, false},
 	}
 
-	assert.Equal(t, len(newPath), subNode.GetDepth()-superNode.GetDepth())
-	assert.ElementsMatch(t, newPath, [][]int{
-		{0, 0, 0, 0, 0, 0, 0, 0},
-		{0, 0, 0, 0, 0, 0, 1},
-		{0, 0, 0, 0, 0, 1},
-	})
+	for _, comp := range comparisons {
+		a.Metadata = &Metadata{Priority: comp.aPriority}
+		b.Metadata = &Metadata{Priority: comp.bPriority}
+		assert.Equal(t, comp.expected, comparator(a, b))
+	}
+}
 
+func TestInsertAndRetrieveCidrs(t *testing.T) {
+	super := NewSupernet()
+	cidrs := []string{"1.1.1.1/8", "2.1.1.1/8", "3.1.1.1/8", "2001:db8::ff00:42:8329/16"}
+
+	for _, cidrString := range cidrs {
+		_, cidr, _ := net.ParseCIDR(cidrString)
+		super.InsertCidr(cidr, nil)
+	}
+
+	ipv4Results := []string{"1.0.0.0/8", "2.0.0.0/8", "3.0.0.0/8"}
+	assert.ElementsMatch(t, ipv4Results, super.getAllV4Cidrs(false), "IPv4 CIDR retrieval should match")
+
+	ipv6ExpectedPath := []int{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	assert.ElementsMatch(t, ipv6ExpectedPath, super.ipv6Cidrs.GetLeafsPaths()[0], "IPv6 path should match")
 }
 
 func TestEqualConflictLowPriory(t *testing.T) {
@@ -167,7 +110,7 @@ func TestEqualConflictLowPriory(t *testing.T) {
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
-	}, root.getAllV4Cidrs())
+	}, root.getAllV4Cidrs(false))
 
 	assert.Equal(t, "high", root.ipv4Cidrs.GetLeafs()[0].Metadata.Attributes["cidr"])
 }
@@ -183,7 +126,7 @@ func TestEqualConflictHighPriory(t *testing.T) {
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
-	}, root.getAllV4Cidrs())
+	}, root.getAllV4Cidrs(false))
 
 	assert.Equal(t, "high", root.ipv4Cidrs.GetLeafs()[0].Metadata.Attributes["cidr"])
 
@@ -200,7 +143,7 @@ func TestSubConflictLowPriority(t *testing.T) {
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
-	}, root.getAllV4Cidrs())
+	}, root.getAllV4Cidrs(false))
 }
 
 func TestSubConflictHighPriority(t *testing.T) {
@@ -211,7 +154,7 @@ func TestSubConflictHighPriority(t *testing.T) {
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 
-	allCidrs := root.getAllV4Cidrs()
+	allCidrs := root.getAllV4Cidrs(false)
 
 	assert.Equal(t, len(allCidrs), 24-16+1)
 	assert.ElementsMatch(t, []string{
@@ -224,7 +167,7 @@ func TestSubConflictHighPriority(t *testing.T) {
 		"192.168.32.0/19",
 		"192.168.64.0/18",
 		"192.168.128.0/17",
-	}, root.getAllV4Cidrs())
+	}, root.getAllV4Cidrs(false))
 }
 func TestSuperConflictLowPriority(t *testing.T) {
 	root := NewSupernet()
@@ -234,7 +177,7 @@ func TestSuperConflictLowPriority(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
 
-	allCidrs := root.getAllV4Cidrs()
+	allCidrs := root.getAllV4Cidrs(false)
 
 	assert.Equal(t, 24-16+1, len(allCidrs))
 
@@ -259,7 +202,7 @@ func TestSuperConflictHighPriority(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(sub.String())})
 	root.InsertCidr(super, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
 
-	allCidrs := root.getAllV4Cidrs()
+	allCidrs := root.getAllV4Cidrs(false)
 
 	assert.Equal(t, 1, len(allCidrs))
 

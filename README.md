@@ -16,7 +16,7 @@ To install `supernet`, ensure you have Go installed on your machine (version 1.1
 
 ```sh
 go get github.com/khalid_nowaf/supernet
-
+```
 
 ## Installation
 

@@ -1,9 +1,11 @@
 package supernet
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 	"strconv"
+	"strings"
 
 	"github.com/khalid_nowaf/supernet/pkg/trie"
 )
@@ -101,9 +103,9 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 			slog.Info("Conflict detected (EQUAL_CIDR)")
 			if isNewHasPriority := comparator(newCidrNode, currentNode); isNewHasPriority {
 				currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
-				slog.Info("New CIDR: " + ipnet.String() + " won over and replaced CIDR:" + NodeToCidr(currentNode))
+				slog.Info("New CIDR: " + ipnet.String() + " won over and replaced CIDR:" + NodeToCidr(currentNode, metadata.isV6))
 			}
-			slog.Info("New CIDR: " + ipnet.String() + " lost, and will be ignored in favor of CIDR:" + NodeToCidr(currentNode))
+			slog.Info("New CIDR: " + ipnet.String() + " lost, and will be ignored in favor of CIDR:" + NodeToCidr(currentNode, metadata.isV6))
 			return // this is the last bit
 
 		case SUBCIDR:
@@ -112,11 +114,11 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				// since, we do not insert all the bits for newCidrNode
 				// we will deal with conflict resolution later at the last bit
 				supernetToSplitLater = currentNode
-				slog.Info("NEW CIDR: " + ipnet.String() + "won over and will split CIDR: " + NodeToCidr(currentNode))
+				slog.Info("NEW CIDR: " + ipnet.String() + "won over and will split CIDR: " + NodeToCidr(currentNode, metadata.isV6))
 			} else {
 				// since the currentNode is supernet and have a higher priority
 				// we will simply ignore the inserting it
-				slog.Info("New CIDR: " + ipnet.String() + " lost, and will be ignored in favor of CIDR:" + NodeToCidr(currentNode))
+				slog.Info("New CIDR: " + ipnet.String() + " lost, and will be ignored in favor of CIDR:" + NodeToCidr(currentNode, metadata.isV6))
 				return
 			}
 
@@ -130,10 +132,10 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 			anyConflictedCidrHasPriority := false
 			for _, conflictedCidr := range conflictedCidrs {
 				if conflictedCidrHasPriority := comparator(conflictedCidr, newCidrNode); conflictedCidrHasPriority {
-					slog.Info("New CIDR: " + ipnet.String() + " lost, and will be split around CIDR:" + NodeToCidr(currentNode))
+					slog.Info("New CIDR: " + ipnet.String() + " lost, and will be split around CIDR:" + NodeToCidr(conflictedCidr, metadata.isV6))
 					newCidrs := splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
 					for _, splittedCidr := range newCidrs {
-						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr))
+						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr, metadata.isV6))
 					}
 					anyConflictedCidrHasPriority = true
 				}
@@ -156,7 +158,7 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 				if supernetToSplitLater != nil {
 					newCidrs := splitSuperAroundSub(supernetToSplitLater, added, supernetToSplitLater.Metadata)
 					for _, splittedCidr := range newCidrs {
-						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr))
+						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr, metadata.isV6))
 					}
 				}
 
@@ -311,11 +313,11 @@ func bitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 
 }
 
-func NodeToCidr(t *trie.BinaryTrie[Metadata]) string {
+func NodeToCidr(t *trie.BinaryTrie[Metadata], isV6 bool) string {
 	if t.Metadata == nil {
 		panic("You can not get a CIDR for Path Node")
 	}
-	return bitsToCidr(t.GetPath(), t.Metadata.isV6).String()
+	return bitsToCidr(t.GetPath(), isV6).String()
 }
 
 func cidrToBits(ipnet *net.IPNet) ([]int, int) {

@@ -25,7 +25,7 @@ const (
 	NONE
 )
 
-// Metadata holds the properties for a CIDR node within a trie, including IP version, priority, and additional attributes.
+//	holds the properties for a CIDR node within a trie, including IP version, priority, and additional attributes.
 //
 // Properties:
 //   - isV6: True if the CIDR is an IPv6 address
@@ -37,7 +37,7 @@ type Metadata struct {
 	Attributes map[string]string
 }
 
-// NewDefaultMetadata creates a Metadata instance with default values.
+//	creates a Metadata instance with default values.
 //
 // Returns:
 //   - A pointer to a Metadata instance initialized with default values.
@@ -47,12 +47,11 @@ func NewDefaultMetadata() *Metadata {
 
 // supernet represents a structure containing both IPv4 and IPv6 CIDRs, each stored in a separate trie.
 type supernet struct {
-	seedID    uint64
 	ipv4Cidrs *trie.BinaryTrie[Metadata]
 	ipv6Cidrs *trie.BinaryTrie[Metadata]
 }
 
-// NewSupernet initializes a new supernet instance with separate tries for IPv4 and IPv6 CIDRs.
+// initializes a new supernet instance with separate tries for IPv4 and IPv6 CIDRs.
 //
 // Returns:
 //   - A pointer to a newly initialized supernet instance.

@@ -268,6 +268,49 @@ func TestSuperConflictHighPriority(t *testing.T) {
 	}, allCidrs)
 }
 
+func TestLookIPv4(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
+
+	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
+	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+
+	cidr, err := root.LookupIP("192.168.25.154")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cidr)
+	assert.Equal(t, "192.168.16.0/20", cidr.String())
+}
+
+func TestLookIPv6(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("2001:db8:abcd:12::/64")
+	_, sub, _ := net.ParseCIDR("2001:db8:abcd:12:1234::/80")
+
+	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
+	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+
+	cidr, err := root.LookupIP("2001:0db8:abcd:12:1234::")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cidr)
+	assert.Equal(t, "2001:db8:abcd:12:1234::/80", cidr.String())
+
+	cidr, err = root.LookupIP("2001:db8:abcd:12:1234::abcd")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cidr)
+	assert.Equal(t, "2001:db8:abcd:12:1234::/80", cidr.String())
+
+	cidr, err = root.LookupIP("2001:db8:abcd:12:0000::1")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, cidr)
+	assert.Equal(t, "2001:db8:abcd:12::/68", cidr.String())
+
+}
+
 func makeCidrAtrr(cidr string) map[string]string {
 	attr := make(map[string]string)
 	attr["cidr"] = cidr

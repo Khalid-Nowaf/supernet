@@ -229,9 +229,35 @@ func splitSuperAroundSub(super *trie.BinaryTrie[Metadata], sub *trie.BinaryTrie[
 
 }
 
-// func LookupCidr(ip net.Addr) {}
+func (super *supernet) LookupIP(ip string) (*net.IPNet, error) {
+	supernet := super.ipv4Cidrs
+	isV6 := strings.Contains(ip, ":")
+	mask := 32
+	if isV6 {
+		mask = 128
+		supernet = super.ipv6Cidrs
+	}
+	_, parsedIP, err := net.ParseCIDR(fmt.Sprintf("%s/%d", ip, mask))
+	if err != nil {
+		return nil, err
+	}
 
-// func GetCidrs() []net.IPAddr {}
+	ipBits, _ := cidrToBits(parsedIP)
+
+	for i, bit := range ipBits {
+
+		if supernet == nil {
+			// has no CIDR
+			return nil, nil
+		} else if supernet.IsLeaf() {
+			// founded
+			return bitsToCidr(ipBits[0:i], isV6), nil
+		} else {
+			supernet = supernet.GetChildAt(bit)
+		}
+	}
+	panic("should not reach here")
+}
 
 // will return true of A has or equal propriety to B
 // note: we assume A is a new, and B is old therefore we return true if they are equal

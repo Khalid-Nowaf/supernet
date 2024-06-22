@@ -13,11 +13,49 @@ import (
 type ConflictType int
 
 const (
-	EQUAL_CIDR ConflictType = iota // Indicates a conflict where the new CIDR exactly matches an existing CIDR in the trie.
-	SUBCIDR                        // Indicates the new CIDR is a subrange of an existing CIDR in the trie.
-	SUPERCIDR                      // Indicates the new CIDR encompasses one or more existing CIDRs in the trie.
-	NONE                           // Indicates no conflict with existing CIDRs in the trie
+// ResolutionAction defines the possible actions to resolve a conflict between CIDRs in a trie.
+type ResolutionAction int
+
+const (
+	IGNORE_INSERTION     ResolutionAction = iota // no action is required to resolve the conflict.
+	SPLIT_INSERTED_CIDR                          // inserted CIDR should be split to resolve the conflict.
+	SPLIT_EXISTING_CIDR                          // existing CIDR should be split to resolve the conflict.
+	REMOVE_EXISTING_CIDR                         // existing CIDR should be removed to resolve the conflict.
+	NO_ACTION                                    // no action is taken because there is no conflict
 )
+
+// records the outcome of attempting to insert a CIDR for reporting
+type InsertionResult struct {
+	CIDR             net.IPNet                   //  CIDR was attempted to be inserted.
+	ConflictType     ConflictType                //  type of conflict encountered during the insertion.
+	ResolutionAction ResolutionAction            //  action taken to resolve the conflict.
+	ConflictedWith   trie.BinaryTrie[Metadata]   //  conflicted CIDRS with the inserted node, if any.
+	AddedCIDRs       []trie.BinaryTrie[Metadata] //  added CIDRS from the resolution/insertion process.
+	RemovedCIDRs     []trie.BinaryTrie[Metadata] //  removed CIDRS from the resolution process.
+}
+
+// appends a new CIDR trie node to the ResultedAddedCIDRs
+//
+//	to keep track of all the added CIDRs from resolving a conflict.
+func (ir *InsertionResult) appendAddedCidr(cidr *trie.BinaryTrie[Metadata]) {
+	ir.AddedCIDRs = append(ir.AddedCIDRs, *cidr)
+}
+
+// appends a removed existing CIDR  to the ResultedCIDRs
+// to keep track of all removed CIDRs from resolving a conflict.
+func (ir *InsertionResult) appendRemovedCidr(cidr *trie.BinaryTrie[Metadata]) {
+	ir.RemovedCIDRs = append(ir.AddedCIDRs, *cidr)
+}
+
+// copyInsertedResult creates a new InsertResult that contains a shallow copy of the original
+// InsertResult's CIDR, ConflictType, and ResolutionAction. It does not include ConflictedWith
+// or ResultedCIDRs as these may not be relevant to the copied context.
+func copyInsertedResult(ir *InsertionResult) *InsertionResult {
+	return &InsertionResult{
+		CIDR:         ir.CIDR,
+		ConflictType: ir.ConflictType,
+	}
+}
 
 //	holds the properties for a CIDR node within a trie, including IP version, priority, and additional attributes.
 //
@@ -94,12 +132,14 @@ func (super *supernet) getAllV4Cidrs(forV6 bool) []string {
 //   - newCidrNode: A new trie node initialized with the metadata intended for the new CIDR.
 //   - path: A slice of integers representing the binary path derived from the CIDR.
 //   - depth: The depth in the trie at which the CIDR should be inserted, determined by the number of bits in the CIDR's netmask.
-func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
+func (super *Supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
 	currentNode *trie.BinaryTrie[Metadata],
 	newCidrNode *trie.BinaryTrie[Metadata],
 	path []int,
 	depth int,
+	insertedResult *InsertionResult,
 ) {
+	insertedResult = &InsertionResult{}
 	// Create a copy of the provided metadata or initialize it with defaults if nil.
 	copyMetadata := metadata
 	if copyMetadata == nil {
@@ -113,7 +153,7 @@ func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
 	} else if ipnet.IP.To16() != nil {
 		// IPv6 CIDR.
 		currentNode = super.ipv6Cidrs
-		copyMetadata.isV6 = true // Ensure metadata reflects the IP version.
+		copyMetadata.IsV6 = true // Ensure metadata reflects the IP version.
 	}
 
 	// Initialize a new trie node with the copied or default metadata.
@@ -126,7 +166,13 @@ func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
 	// if two conflicted CIDRs has the same priority
 	// we favor the smaller CIDR
 	copyMetadata.Priority = append(copyMetadata.Priority, uint8(depth))
-	return currentNode, newCidrNode, path, depth
+
+	// init InsertedResult with defaults (happy path)
+	insertedResult.ResolutionAction = NO_ACTION
+	insertedResult.ConflictType = NONE
+	insertedResult.CIDR = *ipnet
+
+	return currentNode, newCidrNode, path, depth, insertedResult
 }
 
 // InsertCidr attempts to insert a new CIDR into the supernet, handling conflicts according to predefined priorities.
@@ -138,8 +184,9 @@ func (super *supernet) insertInit(ipnet *net.IPNet, metadata *Metadata) (
 //
 // This function navigates through each bit of the new CIDR's path, trying to add a new node if it doesn't already exist,
 // and handles various types of conflicts (EQUAL_CIDR, SUBCIDR, SUPERCIDR) by comparing the priorities of the involved CIDRs.
-func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
-	currentNode, newCidrNode, path, depth := super.insertInit(ipnet, metadata)
+
+func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*InsertionResult {
+	currentNode, newCidrNode, path, depth, insertedResult := super.insertInit(ipnet, metadata)
 	var supernetToSplitLater *trie.BinaryTrie[Metadata]
 
 	for currentDepth, bit := range path {
@@ -147,47 +194,72 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 
 		switch isThereAConflict(currentNode, depth) {
 		case EQUAL_CIDR:
-			slog.Info("Conflict detected (EQUAL_CIDR)")
+			insertedResult.ConflictType = EQUAL_CIDR
+			insertedResult.ConflictedWith = *currentNode
+
 			if comparator(newCidrNode, currentNode) {
-				currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
-				slog.Info("New CIDR replaced existing CIDR: " + NodeToCidr(currentNode, metadata.isV6))
+				insertedResult.ResolutionAction = REMOVE_EXISTING_CIDR
+				insertedResult.appendRemovedCidr(currentNode)
+
+				currentNode = currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
+
+				insertedResult.appendAddedCidr(currentNode)
 			} else {
-				slog.Info("New CIDR ignored in favor of existing CIDR: " + NodeToCidr(currentNode, metadata.isV6))
+				insertedResult.ResolutionAction = IGNORE_INSERTION
 			}
-			return
+			return []*InsertionResult{insertedResult}
 
 		case SUBCIDR:
-			slog.Info("Conflict detected (SUBCIDR)")
+			insertedResult.ConflictType = SUBCIDR
+
 			if comparator(newCidrNode, currentNode) {
+				// we will take care of splitting later, (at the last bit)
+				// because we need to fill all bits for the newCidr
 				supernetToSplitLater = currentNode
-				slog.Info("New CIDR will split existing CIDR: " + NodeToCidr(currentNode, metadata.isV6))
+				insertedResult.ResolutionAction = SPLIT_EXISTING_CIDR
 			} else {
-				slog.Info("New CIDR ignored in favor of existing CIDR: " + NodeToCidr(currentNode, metadata.isV6))
-				return
+				insertedResult.ResolutionAction = IGNORE_INSERTION
+				return []*InsertionResult{insertedResult}
 			}
 
 		case SUPERCIDR:
-			slog.Info("Conflict detected (SUPERCIDR)")
+			insertedResult.ConflictType = SUPERCIDR
+			// since it is a super we do not know how many it will conflict with
+			insertedResults := []*InsertionResult{}
+
 			currentNode.Metadata = newCidrNode.Metadata
 			conflictedCidrs := currentNode.GetLeafs()
 
 			var anyConflictedCidrHasPriority bool
 			for _, conflictedCidr := range conflictedCidrs {
+				insertedResult = copyInsertedResult(insertedResult)
+				insertedResult.ConflictedWith = *conflictedCidr
+
 				if comparator(conflictedCidr, newCidrNode) {
-					slog.Info("New CIDR will be split around: " + NodeToCidr(conflictedCidr, metadata.isV6))
-					newCidrs := splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
-					for _, splittedCidr := range newCidrs {
-						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr, metadata.isV6))
-					}
 					anyConflictedCidrHasPriority = true
+					newCidrs := splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
+					// populate the result
+					insertedResult.ResolutionAction = SPLIT_INSERTED_CIDR
+					for _, splittedCidr := range newCidrs {
+						insertedResult.appendAddedCidr(splittedCidr)
+					}
+				} else {
+					insertedResult.ResolutionAction = REMOVE_EXISTING_CIDR
+					insertedResult.appendRemovedCidr(conflictedCidr)
 				}
+				// since there is more than one result, we need to save this result
+				insertedResults = append(insertedResults, insertedResult)
 			}
-			if !anyConflictedCidrHasPriority {
-				currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
-			} else {
+			if anyConflictedCidrHasPriority {
 				currentNode.Metadata = nil // Revert metadata change if new CIDR is not accepted.
+				return insertedResults
+			} else {
+				// non of the conflicted CIDRS have win over this super
+				// so will of them are removed
+				currentNode = currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
+				insertedResult.appendAddedCidr(currentNode)
+				return insertedResults
 			}
-			return
 
 		case NONE:
 			if currentDepth == depth {
@@ -196,15 +268,22 @@ func (super *supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) {
 					panic("New CIDR failed to be added at the expected location.")
 				}
 				if supernetToSplitLater != nil {
+					// since we has SUBCIDR conflict earlier,
+					// we do the splitting at the last bit here
+					insertedResult.appendRemovedCidr(supernetToSplitLater)
 					newCidrs := splitSuperAroundSub(supernetToSplitLater, added, supernetToSplitLater.Metadata)
 					for _, splittedCidr := range newCidrs {
-						slog.Info("Splitted CIDRS: " + NodeToCidr(splittedCidr, metadata.isV6))
+						insertedResult.appendAddedCidr(splittedCidr)
 					}
 				}
 			}
 			// Continue traversal if no conflict and not the last bit.
 		}
 	}
+
+	// no conflicted, so the result is normal
+	insertedResult.AddedCIDRs = append(insertedResult.AddedCIDRs, *currentNode)
+	return []*InsertionResult{insertedResult}
 }
 
 // isThereAConflict determines if there is a conflict between the current trie node and a new CIDR insertion attempt,

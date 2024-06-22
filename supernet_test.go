@@ -303,6 +303,119 @@ func TestLookIPv6(t *testing.T) {
 
 }
 
+func TestEqualConflictResults(t *testing.T) {
+	root := NewSupernet()
+	_, cidr1, _ := net.ParseCIDR("192.168.1.1/24")
+	_, cidr2, _ := net.ParseCIDR("192.168.1.1/24")
+
+	results := root.InsertCidr(cidr1, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(cidr1.String())})
+
+	assert.Equal(t, len(results), 1)
+	assert.Equal(t, cidr1.String(), results[0].CIDR.String())
+	assert.Equal(t, NONE, results[0].ConflictType)
+	assert.Equal(t, NO_ACTION, results[0].ResolutionAction)
+
+	results = root.InsertCidr(cidr2, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(cidr2.String())})
+
+	assert.Equal(t, results[0].ConflictType, EQUAL_CIDR)
+	assert.Equal(t, results[0].ResolutionAction, REMOVE_EXISTING_CIDR)
+	assert.Equal(t, len(results), 1)
+	assert.Equal(t, cidr2.String(), results[0].CIDR.String())
+
+	assert.Equal(t, NodeToCidr(&(results[0].RemovedCIDRs[0])), cidr1.String())
+	assert.Equal(t, NodeToCidr(&(results[0].AddedCIDRs[0])), cidr2.String())
+}
+
+func TestSubConflictResults(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
+
+	results := root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+
+	assert.Equal(t, len(results), 1)
+	assert.Equal(t, super.String(), results[0].CIDR.String())
+	assert.Equal(t, NONE, results[0].ConflictType)
+	assert.Equal(t, NO_ACTION, results[0].ResolutionAction)
+
+	results = root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
+	allCidrs := root.getAllV4CidrsString(false)
+
+	assert.Equal(t, results[0].ConflictType, SUBCIDR)
+	assert.Equal(t, results[0].ResolutionAction, SPLIT_EXISTING_CIDR)
+	assert.Equal(t, len(results), 1)
+	assert.Equal(t, sub.String(), results[0].CIDR.String())
+
+	assert.Equal(t, len(results[0].AddedCIDRs), len(allCidrs))
+	assert.Equal(t, len(results[0].RemovedCIDRs), 1)
+
+}
+
+func TestSuperConflictResults(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
+
+	results := root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+
+	assert.Equal(t, len(results), 1)
+	assert.Equal(t, sub.String(), results[0].CIDR.String())
+	assert.Equal(t, NONE, results[0].ConflictType)
+	assert.Equal(t, NO_ACTION, results[0].ResolutionAction)
+
+	results = root.InsertCidr(super, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
+
+	assert.Equal(t, results[0].ConflictType, SUPERCIDR)
+	assert.Equal(t, results[0].ResolutionAction, REMOVE_EXISTING_CIDR)
+	assert.Equal(t, 1, len(results), "it should have one result")
+	assert.Equal(t, super.String(), results[0].CIDR.String())
+
+	assert.Equal(t, 1, len(results[0].AddedCIDRs), "Added CIDR must be 1")
+	assert.Equal(t, 1, len(results[0].RemovedCIDRs), "Removed CIDR must be 1")
+
+	assert.Equal(t, super.String(), NodeToCidr(&(results[0].AddedCIDRs[0])), "Added CIDR must be 1")
+	assert.Equal(t, sub.String(), NodeToCidr(&(results[0].RemovedCIDRs[0])), "Removed CIDR must be 1")
+
+}
+
+func TestSuperConflictResultsWithSplit(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
+
+	results := root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
+
+	assert.Equal(t, len(results), 1)
+	assert.Equal(t, sub.String(), results[0].CIDR.String())
+	assert.Equal(t, NONE, results[0].ConflictType)
+	assert.Equal(t, NO_ACTION, results[0].ResolutionAction)
+
+	results = root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+
+	assert.Equal(t, results[0].ConflictType, SUPERCIDR)
+	assert.Equal(t, results[0].ResolutionAction, SPLIT_INSERTED_CIDR)
+	assert.Equal(t, 1, len(results), "it should have one result")
+
+	assert.Equal(t, 8, len(results[0].AddedCIDRs), "Added CIDR must be 8")
+	assert.Equal(t, 0, len(results[0].RemovedCIDRs), "Removed CIDR must be 0")
+
+	addedCidrs := []string{}
+	for _, added := range results[0].AddedCIDRs {
+		addedCidrs = append(addedCidrs, NodeToCidr(&added))
+	}
+
+	assert.ElementsMatch(t, []string{
+		"192.168.0.0/24",
+		"192.168.2.0/23",
+		"192.168.4.0/22",
+		"192.168.8.0/21",
+		"192.168.16.0/20",
+		"192.168.32.0/19",
+		"192.168.64.0/18",
+		"192.168.128.0/17"}, addedCidrs)
+
+}
+
 func makeCidrAtrr(cidr string) map[string]string {
 	attr := make(map[string]string)
 	attr["cidr"] = cidr

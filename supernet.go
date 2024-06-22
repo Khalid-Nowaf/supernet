@@ -2,7 +2,6 @@ package supernet
 
 import (
 	"fmt"
-	"log/slog"
 	"net"
 	"strings"
 
@@ -13,6 +12,12 @@ import (
 type ConflictType int
 
 const (
+	EQUAL_CIDR ConflictType = iota // a conflict where the new CIDR exactly matches an existing CIDR in the trie.
+	SUBCIDR                        // the new CIDR is a subrange of an existing CIDR in the trie.
+	SUPERCIDR                      // the new CIDR encompasses one or more existing CIDRs in the trie.
+	NONE                           // no conflict with existing CIDRs in the trie
+)
+
 // ResolutionAction defines the possible actions to resolve a conflict between CIDRs in a trie.
 type ResolutionAction int
 
@@ -64,7 +69,7 @@ func copyInsertedResult(ir *InsertionResult) *InsertionResult {
 //   - Priority: An array of uint8 representing the priority of the CIDR which aids in conflict resolution.
 //   - Attributes: A map of string keys to string values providing additional information about the CIDR.
 type Metadata struct {
-	isV6       bool
+	IsV6       bool
 	Priority   []uint8
 	Attributes map[string]string
 }
@@ -77,8 +82,8 @@ func NewDefaultMetadata() *Metadata {
 	return &Metadata{}
 }
 
-// supernet represents a structure containing both IPv4 and IPv6 CIDRs, each stored in a separate trie.
-type supernet struct {
+// Supernet represents a structure containing both IPv4 and IPv6 CIDRs, each stored in a separate trie.
+type Supernet struct {
 	ipv4Cidrs *trie.BinaryTrie[Metadata]
 	ipv6Cidrs *trie.BinaryTrie[Metadata]
 }
@@ -87,8 +92,8 @@ type supernet struct {
 //
 // Returns:
 //   - A pointer to a newly initialized supernet instance.
-func NewSupernet() *supernet {
-	return &supernet{
+func NewSupernet() *Supernet {
+	return &Supernet{
 		ipv4Cidrs: &trie.BinaryTrie[Metadata]{},
 		ipv6Cidrs: &trie.BinaryTrie[Metadata]{},
 	}
@@ -102,14 +107,29 @@ func newPathTrie() *trie.BinaryTrie[Metadata] {
 	return &trie.BinaryTrie[Metadata]{}
 }
 
-// GetAllV4Cidrs retrieves all CIDRs from the specified IPv4 or IPv6 trie within a supernet.
+// retrieves all CIDRs from the specified IPv4 or IPv6 trie within a supernet.
+//
+// Parameters:
+//   - forV6: A boolean flag if th CIDR is IPv6
+//
+// Returns:
+//   - A slice of TrieNode, each representing a CIDR in the specified trie.
+func (super *Supernet) GetAllV4Cidrs(forV6 bool) []*trie.BinaryTrie[Metadata] {
+	supernet := super.ipv4Cidrs
+	if forV6 {
+		supernet = super.ipv6Cidrs
+	}
+	return supernet.GetLeafs()
+}
+
+// retrieves all CIDRs from the specified IPv4 or IPv6 trie within a supernet.
 //
 // Parameters:
 //   - forV6: A boolean flag if th CIDR is IPv6
 //
 // Returns:
 //   - A slice of strings, each representing a CIDR in the specified trie.
-func (super *supernet) getAllV4Cidrs(forV6 bool) []string {
+func (super *Supernet) getAllV4CidrsString(forV6 bool) []string {
 	supernet := super.ipv4Cidrs
 	if forV6 {
 		supernet = super.ipv6Cidrs
@@ -391,7 +411,7 @@ func splitSuperAroundSub(super *trie.BinaryTrie[Metadata], sub *trie.BinaryTrie[
 // It then converts this CIDR into a slice of bits and traverses the corresponding trie (IPv4 or IPv6)
 // to find the most specific matching CIDR. If the trie node representing the CIDR is a leaf or no further
 // children exist for matching, the search concludes, returning the found CIDR or nil if no match exists.
-func (super *supernet) LookupIP(ip string) (*net.IPNet, error) {
+func (super *Supernet) LookupIP(ip string) (*net.IPNet, error) {
 	// Determine if the IP is IPv4 or IPv6 based on the presence of a colon.
 	isV6 := strings.Contains(ip, ":")
 	mask := 32
@@ -525,13 +545,13 @@ func bitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 //
 //	Given a trie node representing an IP address with metadata, this function will output the address in CIDR format,
 //	 like "192.168.1.0/24" for IPv4 or "2001:db8::/32" for IPv6.
-func NodeToCidr(t *trie.BinaryTrie[Metadata], isV6 bool) string {
+func NodeToCidr(t *trie.BinaryTrie[Metadata]) string {
 	if t.Metadata == nil {
 		panic("Cannot convert a trie path node to CIDR: metadata is missing")
 	}
 	// Convert the binary path of the trie node to CIDR format using the bitsToCidr function,
 	// then convert the resulting net.IPNet object to a string.
-	return bitsToCidr(t.GetPath(), isV6).String()
+	return bitsToCidr(t.GetPath(), t.Metadata.IsV6).String()
 }
 
 // cidrToBits converts a net.IPNet object into a slice of integers representing the binary bits of the network address.

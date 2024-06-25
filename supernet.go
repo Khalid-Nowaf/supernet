@@ -71,20 +71,28 @@ type InsertionResult struct {
 	RemovedCIDRs     []trie.BinaryTrie[Metadata] //  removed CIDRS from the resolution process.
 }
 
-// appends a new CIDR trie node to the ResultedAddedCIDRs
-//
+// take a copy appends a new CIDR trie node to the ResultedAddedCIDRs
 //	to keep track of all the added CIDRs from resolving a conflict.
 func (ir *InsertionResult) appendAddedCidr(cidr *trie.BinaryTrie[Metadata]) {
 	ir.AddedCIDRs = append(ir.AddedCIDRs, *cidr)
 }
 
-// appends a removed existing CIDR  to the ResultedCIDRs
+// take copy and appends a removed existing CIDR  to the ResultedCIDRs
 // to keep track of all removed CIDRs from resolving a conflict.
 func (ir *InsertionResult) appendRemovedCidr(cidr *trie.BinaryTrie[Metadata]) {
-	ir.RemovedCIDRs = append(ir.AddedCIDRs, *cidr)
+	ir.RemovedCIDRs = append(ir.RemovedCIDRs, *cidr)
 }
 
-// copyInsertedResult creates a new InsertResult that contains a shallow copy of the original
+func (ir *InsertionResult) String() string {
+	addedCidrs := []string{}
+	removedCidrs := []string{}
+
+	for _, added := range ir.AddedCIDRs {
+		addedCidrs = append(addedCidrs, NodeToCidr(&added))
+	}
+	for _, removed := range ir.RemovedCIDRs {
+		removedCidrs = append(removedCidrs, NodeToCidr(&removed))
+	}
 // InsertResult's CIDR, ConflictType, and ResolutionAction. It does not include ConflictedWith
 // or ResultedCIDRs as these may not be relevant to the copied context.
 func copyInsertedResult(ir *InsertionResult) *InsertionResult {

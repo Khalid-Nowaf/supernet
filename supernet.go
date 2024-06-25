@@ -72,6 +72,7 @@ type InsertionResult struct {
 }
 
 // take a copy appends a new CIDR trie node to the ResultedAddedCIDRs
+//
 //	to keep track of all the added CIDRs from resolving a conflict.
 func (ir *InsertionResult) appendAddedCidr(cidr *trie.BinaryTrie[Metadata]) {
 	ir.AddedCIDRs = append(ir.AddedCIDRs, *cidr)

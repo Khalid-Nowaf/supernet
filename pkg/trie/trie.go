@@ -170,3 +170,16 @@ func (root *BinaryTrie[T]) GetLeafsPaths() [][]int {
 	}, nil)
 	return paths
 }
+
+func (t *BinaryTrie[T]) String(printOnLeaf func(*BinaryTrie[T]) string) {
+	t.forEachStepDown(func(node *BinaryTrie[T]) {
+		if node.IsLeaf() {
+			extra := ""
+			if printOnLeaf != nil {
+				extra = printOnLeaf(node)
+			}
+
+			fmt.Printf("%v %s\n", node.GetPath(), extra)
+		}
+	}, nil)
+}

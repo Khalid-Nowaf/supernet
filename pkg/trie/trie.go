@@ -1,5 +1,7 @@
 package trie
 
+import "fmt"
+
 // is an alias for int used to define child positions in a trie node.
 type ChildPos = int
 
@@ -73,15 +75,53 @@ func (t *BinaryTrie[T]) AddChildOrReplaceAt(child *BinaryTrie[T], at ChildPos) *
 func (t *BinaryTrie[T]) GetChildAt(at ChildPos) *BinaryTrie[T] {
 	// TODO: user can get nil
 	if t == nil {
-		panic("WTF")
+		panic("Unexpected nil value")
 	}
+
 	return t.Children[at]
 }
 
-// removes both children of the node, effectively making it a leaf node.
-func (t *BinaryTrie[T]) MakeItALeaf() *BinaryTrie[T] {
-	t.Children[0] = nil
-	t.Children[1] = nil
+// it will return the sibling at the same level, or nil
+func (t *BinaryTrie[T]) GetSibling() *BinaryTrie[T] {
+	return t.Parent.GetChildAt(t.GetPos() ^ 1)
+}
+
+func (t *BinaryTrie[T]) IsBranch() bool {
+	return t.GetSibling() != nil
+}
+
+func (t *BinaryTrie[T]) Remove() {
+	if !t.isRoot() {
+		t.Parent.Children[t.GetPos()] = nil
+	} else {
+		panic("You can not remove the root")
+	}
+}
+
+// removes current node, and the whole branch
+// this will remove any parent that had only one child until it
+// reaches a parant that have 2 children (beginning of the branch)
+// node(branch) -->node-->node-->node
+//
+//	l>node-->node-->node (Dutch)
+//	[remove all the branch]
+func (t *BinaryTrie[T]) DetachBranch(limit int) *BinaryTrie[T] {
+	// if it has children
+	if t.isRoot() {
+		panic("You can not detach Root")
+	}
+	nearestBranchedNode := t
+	t.ForEachStepUp(func(next *BinaryTrie[T]) {
+		if !next.Parent.isRoot() {
+			nearestBranchedNode = next.Parent
+		}
+
+	}, func(next *BinaryTrie[T]) bool {
+		return !next.IsBranch() && next.depth > limit
+	})
+
+	nearestBranchedNode.Remove()
+
 	return t
 }
 
@@ -124,7 +164,7 @@ func (t *BinaryTrie[T]) forEachStepDown(f func(t *BinaryTrie[T]), while func(t *
 
 // applies a function to each ancestor of the node, moving from the node to the root.
 // will return the original node t
-func (t *BinaryTrie[T]) ForEachStepUp(f func(t *BinaryTrie[T]), while func(t *BinaryTrie[T]) bool) *BinaryTrie[T] {
+func (t *BinaryTrie[T]) ForEachStepUp(f func(*BinaryTrie[T]), while func(*BinaryTrie[T]) bool) *BinaryTrie[T] {
 	current := t
 	for current.Parent != nil && (while == nil || while(current)) {
 		f(current)

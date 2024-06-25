@@ -47,17 +47,6 @@ func TestGetChildAt(t *testing.T) {
 	assert.Nil(t, root.GetChildAt(ONE), "Should return nil for an empty child position")
 }
 
-// TestTerminate verifies that nodes can be transformed into leaf nodes correctly.
-func TestTerminate(t *testing.T) {
-	root := NewTrie()
-	root.AddChildAtIfNotExist(NewTrie(), ZERO)
-	root.AddChildAtIfNotExist(NewTrie(), ONE)
-
-	root.MakeItALeaf()
-	assert.Nil(t, root.GetChildAt(ZERO), "Child at ZERO should be nil after making it a leaf")
-	assert.Nil(t, root.GetChildAt(ONE), "Child at ONE should be nil after making it a leaf")
-}
-
 // TestForEachChild checks that ForEachChild iterates over all children correctly.
 func TestForEachChild(t *testing.T) {
 	root := NewTrie()
@@ -125,6 +114,76 @@ func TestGetUniquePaths(t *testing.T) {
 		{1, 1, 1, 1},
 	}
 	actualPaths := root.GetLeafsPaths()
+	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
+}
+
+func TestGetSibling(t *testing.T) {
+
+	paths := []string{"0010", "0011", "00111"}
+	root := NewTrie()
+	generateTrieAs(paths, root)
+
+	leafs := root.GetLeafs()
+	assert.NotNil(t, leafs[0].GetSibling())
+	assert.Equal(t, 1, leafs[0].GetSibling().GetPos())
+	assert.Nil(t, leafs[1].GetSibling())
+}
+
+func TestRemove(t *testing.T) {
+	paths := []string{"0010", "0011"}
+	root := NewTrie()
+	generateTrieAs(paths, root)
+	assert.ElementsMatch(t, [][]int{
+		{0, 0, 1, 0},
+		{0, 0, 1, 1},
+	}, root.GetLeafsPaths())
+	leafs := root.GetLeafs()
+
+	leafs[0].Remove()
+
+	newLeafs := root.GetLeafs()
+	assert.Equal(t, 1, len(newLeafs))
+	assert.Equal(t, []int{0, 0, 1, 1}, newLeafs[0].GetPath())
+
+	leafs[1].Remove()
+
+	newLeafs = root.GetLeafs()
+	assert.Equal(t, 1, len(newLeafs))
+	assert.Equal(t, []int{0, 0, 1}, newLeafs[0].GetPath())
+
+}
+func TestDetach(t *testing.T) {
+	//(0)-> 0|0|1[0]
+	//      (1)->|1|0|0|0|0[0] if we detach at last bit of the branch, the whole branch should be deleted
+	paths := []string{
+		"0010",
+		"001100000"}
+	root := NewTrie()
+
+	generateTrieAs(paths, root)
+
+	expectedPaths := [][]int{
+		{0, 0, 1, 0},
+	}
+	lastLeaf := root.GetLeafs()
+	lastLeaf[1].DetachBranch(0)
+	actualPaths := root.GetLeafsPaths()
+	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
+
+	// case where the bench is the first
+	paths = []string{
+		"01",
+		"111010110101"}
+	root = NewTrie()
+
+	generateTrieAs(paths, root)
+
+	expectedPaths = [][]int{
+		{0, 1},
+	}
+	lastLeaf = root.GetLeafs()
+	lastLeaf[1].DetachBranch(0)
+	actualPaths = root.GetLeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 }
 
@@ -204,7 +263,7 @@ func generateTrieAs(paths []string, trie *BinaryTrie[string]) {
 	for _, path := range paths {
 		current := trie
 		for _, bit := range path {
-			metadata := strPtr(string(bit) + " <- " + *current.Metadata)
+			metadata := strPtr(*current.Metadata + string(bit) + " -> ")
 			if bit == '0' {
 				current = current.AddChildAtIfNotExist(NewTrieWithMetadata(metadata), ZERO)
 			} else {

@@ -18,6 +18,21 @@ const (
 	NONE                           // no conflict with existing CIDRs in the trie
 )
 
+func (c ConflictType) String() string {
+	switch c {
+	case EQUAL_CIDR:
+		return "EQUAL CIDR"
+	case SUBCIDR:
+		return "SUBCIDR"
+	case SUPERCIDR:
+		return "SUPERCIDR"
+	case NONE:
+		return "NONE"
+	default:
+		return "UNKNOWN CONFLICT TYPE"
+	}
+}
+
 // ResolutionAction defines the possible actions to resolve a conflict between CIDRs in a trie.
 type ResolutionAction int
 

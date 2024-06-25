@@ -44,6 +44,23 @@ const (
 	NO_ACTION                                    // no action is taken because there is no conflict
 )
 
+func (r ResolutionAction) String() string {
+	switch r {
+	case IGNORE_INSERTION:
+		return "IGNORE INSERTION"
+	case SPLIT_INSERTED_CIDR:
+		return "SPLIT INSERTED CIDR"
+	case SPLIT_EXISTING_CIDR:
+		return "SPLIT EXISTING CIDR"
+	case REMOVE_EXISTING_CIDR:
+		return "REMOVE EXISTING CIDR"
+	case NO_ACTION:
+		return "NO ACTION"
+	default:
+		return "UNKNOWN ACTION"
+	}
+}
+
 // records the outcome of attempting to insert a CIDR for reporting
 type InsertionResult struct {
 	CIDR             net.IPNet                   //  CIDR was attempted to be inserted.

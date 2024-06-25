@@ -1,10 +1,10 @@
 ## Backlog:
-    ☐ @Refactor(Trie): to be an interface or more genric @low
+    ☐ @Refactor(Trie): to be an interface or more generic @low
     ☐ @Feat(Trie): Optimize feature to convert Trie to LCTrie @idea
-    ☐ @Refactor(Supernet): extract binray oprations to saparte package @low
+    ☐ @Refactor(Supernet): extract binary operations to separate package @low
     ☐ @Refactor(Supernet): extract IPNet wrapping logic to file or a package @low
-    ☐ @Feat(Supernet): Build cmd `supernet` that take a file and reslove the conflict @high
-    ☐ @Feat(Supernet): add a report function to report what is conflicted and how it was resloved @high
-    ☐ @Feat(Supernet): add recursive conflict resolution during splitting @high @high
-        ☐ replace AddChildIfNotExist with super.Insert and refactor the code if needed
-        ☐ find a way if to detect if the conflicted was created during the insertion, to avoid conflict resolution
+    ✔ @Feat(Supernet): Build cmd `supernet` that take a file and resolve the conflict @high @done(24-06-25 20:32)
+    ✔ @Feat(Supernet): add a report function to report what is conflicted and how it was resolved @high @done(24-06-25 20:32)
+    ✔ @Feat(Supernet): add recursive conflict resolution during splitting @high @high @done(24-06-25 20:32)
+        ✔ replace AddChildIfNotExist with super.Insert and refactor the code if needed @done(24-06-25 20:32)
+        ✔ find a way if to detect if the conflicted was created during the insertion, to avoid conflict resolution @done(24-06-25 20:32)

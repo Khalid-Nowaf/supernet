@@ -527,6 +527,27 @@ func TestNestedConflictResolution2(t *testing.T) {
 	}, root.getAllV4CidrsString(false))
 }
 
+func TestRemoveBranchWithLimit(t *testing.T) {
+
+	root := NewSupernet()
+	deepCidrs := []struct {
+		cidr       string
+		priorities []uint8
+	}{
+		{cidr: "192.168.128.0/19", priorities: []uint8{1}},
+		{cidr: "192.168.128.0/18", priorities: []uint8{3}},
+	}
+
+	for _, deepCidr := range deepCidrs {
+		_, ipnet, _ := net.ParseCIDR(deepCidr.cidr)
+		results := root.InsertCidr(ipnet, &Metadata{Priority: deepCidr.priorities, Attributes: makeCidrAtrr(deepCidr.cidr)})
+		printResults(results)
+		printPaths(root)
+	}
+
+	assert.ElementsMatch(t, []string{"192.168.128.0/18"}, root.getAllV4CidrsString(false))
+}
+
 func makeCidrAtrr(cidr string) map[string]string {
 	attr := make(map[string]string)
 	attr["cidr"] = cidr

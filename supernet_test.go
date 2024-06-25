@@ -419,6 +419,114 @@ func TestSuperConflictResultsWithSplit(t *testing.T) {
 
 }
 
+func TestNestedConflictResolution1(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+
+	deepCidrs := []struct {
+		cidr       string
+		priorities []uint8
+	}{
+		{cidr: "192.168.0.0/24", priorities: []uint8{3}},
+		{cidr: "192.168.2.0/23", priorities: []uint8{1}},
+		{cidr: "192.168.16.0/22", priorities: []uint8{1}},
+		{cidr: "192.168.128.0/19", priorities: []uint8{3}},
+		{cidr: "192.168.128.0/18", priorities: []uint8{3}},
+	}
+
+	for _, deepCidr := range deepCidrs {
+		_, ipnet, _ := net.ParseCIDR(deepCidr.cidr)
+		results := root.InsertCidr(ipnet, &Metadata{Priority: deepCidr.priorities, Attributes: makeCidrAtrr(deepCidr.cidr)})
+		printResults(results)
+		printPaths(root)
+	}
+	results := root.InsertCidr(super, &Metadata{Priority: []uint8{2}, Attributes: makeCidrAtrr(super.String())})
+	printResults(results)
+	printPaths(root)
+	// THIS TEST IS A BIT NOSY, BLGTM
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0] [192.168.0.0/24] -> from [192.168.0.0/24]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 1] [192.168.1.0/24] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 1] [192.168.2.0/23] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 1] [192.168.4.0/22] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 1] [192.168.8.0/21] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 1] [192.168.16.0/20] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 1] [192.168.32.0/19] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 1] [192.168.64.0/18] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 0 0] [192.168.128.0/19] -> from [192.168.128.0/19]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 0 1] [192.168.160.0/19] -> from [192.168.128.0/18]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 1] [192.168.192.0/18] -> from [192.168.0.0/16]
+	//
+	// we noticed subnet 17 could not make it becase of subnets in 192.0/18
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 1] 192.0/18
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0(1)] /17 the least significant bit is blocking 192.0/18
+	assert.ElementsMatch(t, []string{
+		"192.168.0.0/24",
+		"192.168.1.0/24",
+		"192.168.2.0/23",
+		"192.168.4.0/22",
+		"192.168.8.0/21",
+		"192.168.16.0/20",
+		"192.168.32.0/19",
+		"192.168.64.0/18",
+		"192.168.192.0/18",
+		"192.168.128.0/19",
+		"192.168.160.0/19",
+	}, root.getAllV4CidrsString(false))
+}
+
+func TestNestedConflictResolution2(t *testing.T) {
+	root := NewSupernet()
+	_, super, _ := net.ParseCIDR("192.168.0.0/16")
+
+	deepCidrs := []struct {
+		cidr       string
+		priorities []uint8
+	}{
+		{cidr: "192.168.0.0/24", priorities: []uint8{3}},
+		{cidr: "192.168.2.0/23", priorities: []uint8{1}},
+		{cidr: "192.168.16.0/22", priorities: []uint8{1}},
+		{cidr: "192.168.128.0/19", priorities: []uint8{1}},
+		{cidr: "192.168.128.0/18", priorities: []uint8{3}},
+	}
+
+	for _, deepCidr := range deepCidrs {
+		_, ipnet, _ := net.ParseCIDR(deepCidr.cidr)
+		results := root.InsertCidr(ipnet, &Metadata{Priority: deepCidr.priorities, Attributes: makeCidrAtrr(deepCidr.cidr)})
+		printResults(results)
+		printPaths(root)
+	}
+	results := root.InsertCidr(super, &Metadata{Priority: []uint8{2}, Attributes: makeCidrAtrr(super.String())})
+	printResults(results)
+	printPaths(root)
+	// THIS TEST IS A BIT NOSY, BLGTM
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0] [192.168.0.0/24] -> from [192.168.0.0/24]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 0 1] [192.168.1.0/24] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 0 1] [192.168.2.0/23] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 0 1] [192.168.4.0/22] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 0 1] [192.168.8.0/21] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 0 1] [192.168.16.0/20] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 0 1] [192.168.32.0/19] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 0 1] [192.168.64.0/18] -> from [192.168.0.0/16]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 0] [192.168.128.0/18] -> from [192.168.128.0/18]
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 1] [192.168.192.0/18] -> from [192.168.0.0/16]
+	//
+	// we noticed subnet 17 could not make it because of subnets in 192.0/18
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 1] 192.0/18
+	// [1 1 0 0 0 0 0 0 1 0 1 0 1 0 0 0(1)] /17 the least significant bit is blocking 192.0/18
+	assert.ElementsMatch(t, []string{
+		"192.168.0.0/24",
+		"192.168.1.0/24",
+		"192.168.2.0/23",
+		"192.168.4.0/22",
+		"192.168.8.0/21",
+		"192.168.16.0/20",
+		"192.168.32.0/19",
+		"192.168.64.0/18",
+		"192.168.128.0/18",
+		"192.168.192.0/18",
+	}, root.getAllV4CidrsString(false))
+}
+
 func makeCidrAtrr(cidr string) map[string]string {
 	attr := make(map[string]string)
 	attr["cidr"] = cidr

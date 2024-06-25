@@ -309,6 +309,9 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*Inser
 					insertedResult = BuildNewResult(*ipnet, SUPERCIDR, REMOVE_EXISTING_CIDR, *conflictedCidr)
 					insertedResult.appendRemovedCidr(conflictedCidr)
 					insertedResults = append(insertedResults, insertedResult)
+
+					// we remove it from the tree
+					conflictedCidr.DetachBranch(currentDepth + 1)
 				}
 				// since there is more than one result, we need to save this result
 			}
@@ -397,7 +400,7 @@ func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int)
 		if currentNode.GetDepth()-1 == targetedDepth {
 			return ConflictType(EQUAL_CIDR) // The node is at the same level as the targeted CIDR.
 		}
-		if currentNode.GetDepth() < targetedDepth {
+		if currentNode.GetDepth() <= targetedDepth {
 			return ConflictType(SUBCIDR) // The node is a subnetwork of the targeted CIDR.
 		}
 	}

@@ -1,6 +1,7 @@
 package supernet
 
 import (
+	"fmt"
 	"net"
 	"testing"
 
@@ -105,8 +106,8 @@ func TestEqualConflictLowPriory(t *testing.T) {
 	_, cidrLow, _ := net.ParseCIDR("192.168.0.0/16")
 
 	root.InsertCidr(cidrHigh, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr("high")})
-	root.InsertCidr(cidrLow, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr("low")})
-
+	results := root.InsertCidr(cidrLow, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr("low")})
+	printResults(results)
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
@@ -122,7 +123,8 @@ func TestEqualConflictHighPriory(t *testing.T) {
 	_, cidrLow, _ := net.ParseCIDR("192.168.0.0/16")
 
 	root.InsertCidr(cidrLow, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr("low")})
-	root.InsertCidr(cidrHigh, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr("high")})
+	result := root.InsertCidr(cidrHigh, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr("high")})
+	printResults(result)
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
@@ -241,8 +243,8 @@ func TestSuperConflictEqualPriority(t *testing.T) {
 	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
 
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(sub.String())})
-	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
-
+	result := root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
+	printResults(result)
 	allCidrs := root.getAllV4CidrsString(false)
 
 	assert.Equal(t, 24-16+1, len(allCidrs))
@@ -340,7 +342,8 @@ func TestSubConflictResults(t *testing.T) {
 
 	results = root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 	allCidrs := root.getAllV4CidrsString(false)
-
+	printPaths(root)
+	printResults(results)
 	assert.Equal(t, results[0].ConflictType, SUBCIDR)
 	assert.Equal(t, results[0].ResolutionAction, SPLIT_EXISTING_CIDR)
 	assert.Equal(t, len(results), 1)
@@ -383,7 +386,7 @@ func TestSuperConflictResultsWithSplit(t *testing.T) {
 	_, super, _ := net.ParseCIDR("192.168.0.0/16")
 	_, sub, _ := net.ParseCIDR("192.168.1.1/24")
 
-	results := root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(super.String())})
+	results := root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 
 	assert.Equal(t, len(results), 1)
 	assert.Equal(t, sub.String(), results[0].CIDR.String())
@@ -391,7 +394,7 @@ func TestSuperConflictResultsWithSplit(t *testing.T) {
 	assert.Equal(t, NO_ACTION, results[0].ResolutionAction)
 
 	results = root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
-
+	printResults(results)
 	assert.Equal(t, results[0].ConflictType, SUPERCIDR)
 	assert.Equal(t, results[0].ResolutionAction, SPLIT_INSERTED_CIDR)
 	assert.Equal(t, 1, len(results), "it should have one result")
@@ -420,4 +423,23 @@ func makeCidrAtrr(cidr string) map[string]string {
 	attr := make(map[string]string)
 	attr["cidr"] = cidr
 	return attr
+}
+
+func printResults(results []*InsertionResult) {
+	for _, result := range results {
+		fmt.Println(result.String())
+	}
+}
+
+func printPaths(root *Supernet) {
+	for _, node := range root.ipv4Cidrs.GetLeafs() {
+		if node.Metadata != nil {
+			fmt.Printf("%v [%s] -> from [%s]\n", node.GetPath(), bitsToCidr(node.GetPath(), false).String(), node.Metadata.Attributes["cidr"])
+		} else {
+			// hack
+
+			fmt.Printf("%v <-!!-- [%s] \n", node.GetPath(), bitsToCidr(node.GetPath(), false).String())
+			// panic("Path node has not been cleaned")
+		}
+	}
 }

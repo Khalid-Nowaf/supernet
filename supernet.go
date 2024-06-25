@@ -96,10 +96,12 @@ func (ir *InsertionResult) String() string {
 	}
 // InsertResult's CIDR, ConflictType, and ResolutionAction. It does not include ConflictedWith
 // or ResultedCIDRs as these may not be relevant to the copied context.
-func copyInsertedResult(ir *InsertionResult) *InsertionResult {
+func BuildNewResult(cidr net.IPNet, ct ConflictType, ra ResolutionAction, cw trie.BinaryTrie[Metadata]) *InsertionResult {
 	return &InsertionResult{
-		CIDR:         ir.CIDR,
-		ConflictType: ir.ConflictType,
+		CIDR:             cidr,
+		ConflictType:     ct,
+		ResolutionAction: ra,
+		ConflictedWith:   cw,
 	}
 }
 
@@ -272,6 +274,7 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*Inser
 
 		case SUBCIDR:
 			insertedResult.ConflictType = SUBCIDR
+			insertedResult.ConflictedWith = *currentNode
 
 			if comparator(newCidrNode, currentNode) {
 				// we will take care of splitting later, (at the last bit)
@@ -292,27 +295,41 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*Inser
 			conflictedCidrs := currentNode.GetLeafs()
 
 			var anyConflictedCidrHasPriority bool
+			// we can not split on the spot, we need to clean
+			// the tree first (if any needed to be remove)
+			toSplitAround := []*trie.BinaryTrie[Metadata]{}
 			for _, conflictedCidr := range conflictedCidrs {
 				insertedResult = copyInsertedResult(insertedResult)
 				insertedResult.ConflictedWith = *conflictedCidr
 
 				if comparator(conflictedCidr, newCidrNode) {
 					anyConflictedCidrHasPriority = true
-					newCidrs := splitSuperAroundSub(currentNode, conflictedCidr, newCidrNode.Metadata)
-					// populate the result
-					insertedResult.ResolutionAction = SPLIT_INSERTED_CIDR
-					for _, splittedCidr := range newCidrs {
-						insertedResult.appendAddedCidr(splittedCidr)
-					}
+					toSplitAround = append(toSplitAround, conflictedCidr)
 				} else {
-					insertedResult.ResolutionAction = REMOVE_EXISTING_CIDR
+					insertedResult = BuildNewResult(*ipnet, SUPERCIDR, REMOVE_EXISTING_CIDR, *conflictedCidr)
 					insertedResult.appendRemovedCidr(conflictedCidr)
+					insertedResults = append(insertedResults, insertedResult)
 				}
 				// since there is more than one result, we need to save this result
+			}
+
+			// we split safely after cleaning the tree
+			for _, subcidr := range toSplitAround {
+				newCidrs := splitSuperAroundSub(currentNode, subcidr, newCidrNode.Metadata)
+				// populate the result
+				insertedResult = BuildNewResult(*ipnet, SUPERCIDR, SPLIT_INSERTED_CIDR, *subcidr)
+				insertedResult.ConflictedWith = *subcidr
+				insertedResult.ResolutionAction = SPLIT_INSERTED_CIDR
+				for _, splittedCidr := range newCidrs {
+					insertedResult.appendAddedCidr(splittedCidr)
+				}
 				insertedResults = append(insertedResults, insertedResult)
 			}
+
 			if anyConflictedCidrHasPriority {
 				currentNode.Metadata = nil // Revert metadata change if new CIDR is not accepted.
+				// TODO: verify this later
+				//insertedResult.ResolutionAction = IGNORE_INSERTION
 				return insertedResults
 			} else {
 				// non of the conflicted CIDRS have win over this super
@@ -324,15 +341,16 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*Inser
 
 		case NONE:
 			if currentDepth == depth {
-				added := currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
-				if added != newCidrNode {
+				currentNode = currentNode.Parent.AddChildOrReplaceAt(newCidrNode, bit)
+				insertedResult.AddedCIDRs = append(insertedResult.AddedCIDRs, *currentNode)
+				if currentNode != newCidrNode {
 					panic("New CIDR failed to be added at the expected location.")
 				}
 				if supernetToSplitLater != nil {
 					// since we has SUBCIDR conflict earlier,
 					// we do the splitting at the last bit here
 					insertedResult.appendRemovedCidr(supernetToSplitLater)
-					newCidrs := splitSuperAroundSub(supernetToSplitLater, added, supernetToSplitLater.Metadata)
+					newCidrs := splitSuperAroundSub(supernetToSplitLater, currentNode, supernetToSplitLater.Metadata)
 					for _, splittedCidr := range newCidrs {
 						insertedResult.appendAddedCidr(splittedCidr)
 					}

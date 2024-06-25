@@ -94,6 +94,20 @@ func (ir *InsertionResult) String() string {
 	for _, removed := range ir.RemovedCIDRs {
 		removedCidrs = append(removedCidrs, NodeToCidr(&removed))
 	}
+	if ir.ConflictType != NONE {
+		return fmt.Sprintf(`
+		 Conflict Detected %v | `+
+			`CIDR (%s) conflicted with (%s)%v | `+
+			`Action Taken: %v | `+
+			`Added CIDRs: %v | `+
+			`Remove CIDRs: %v 
+		`, ir.ConflictType.String(), ir.CIDR.String(), NodeToCidr(&ir.ConflictedWith), ir.ConflictedWith.Metadata.Priority, ir.ResolutionAction.String(), addedCidrs, removedCidrs)
+	} else {
+		return fmt.Sprintf("New CIDR (%s) Inserted\n", ir.CIDR.String())
+	}
+}
+
+// BuildNewResult creates a new InsertResult that contains a shallow copy of the original
 // InsertResult's CIDR, ConflictType, and ResolutionAction. It does not include ConflictedWith
 // or ResultedCIDRs as these may not be relevant to the copied context.
 func BuildNewResult(cidr net.IPNet, ct ConflictType, ra ResolutionAction, cw trie.BinaryTrie[Metadata]) *InsertionResult {
@@ -299,9 +313,6 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*Inser
 			// the tree first (if any needed to be remove)
 			toSplitAround := []*trie.BinaryTrie[Metadata]{}
 			for _, conflictedCidr := range conflictedCidrs {
-				insertedResult = copyInsertedResult(insertedResult)
-				insertedResult.ConflictedWith = *conflictedCidr
-
 				if comparator(conflictedCidr, newCidrNode) {
 					anyConflictedCidrHasPriority = true
 					toSplitAround = append(toSplitAround, conflictedCidr)
@@ -364,7 +375,6 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) []*Inser
 	}
 
 	// no conflicted, so the result is normal
-	insertedResult.AddedCIDRs = append(insertedResult.AddedCIDRs, *currentNode)
 	return []*InsertionResult{insertedResult}
 }
 

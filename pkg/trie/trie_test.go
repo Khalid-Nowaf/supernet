@@ -129,7 +129,7 @@ func TestGetSibling(t *testing.T) {
 	assert.Nil(t, leafs[1].GetSibling())
 }
 
-func TestAddSibling(t *testing.T) {
+func TestAddSiblingIfNotExist(t *testing.T) {
 	paths := []string{"0010", "0011", "00111"}
 	root := NewTrie()
 	generateTrieAs(paths, root)
@@ -155,6 +155,7 @@ func TestAddSiblingIfExist(t *testing.T) {
 	assert.NotEqual(t, sibling, leafs[0].GetSibling())
 }
 
+func TestDetach(t *testing.T) {
 	paths := []string{"0010", "0011"}
 	root := NewTrie()
 	generateTrieAs(paths, root)
@@ -164,20 +165,20 @@ func TestAddSiblingIfExist(t *testing.T) {
 	}, root.GetLeafsPaths())
 	leafs := root.GetLeafs()
 
-	leafs[0].Remove()
+	leafs[0].Detach()
 
 	newLeafs := root.GetLeafs()
 	assert.Equal(t, 1, len(newLeafs))
 	assert.Equal(t, []int{0, 0, 1, 1}, newLeafs[0].GetPath())
 
-	leafs[1].Remove()
+	leafs[1].Detach()
 
 	newLeafs = root.GetLeafs()
 	assert.Equal(t, 1, len(newLeafs))
 	assert.Equal(t, []int{0, 0, 1}, newLeafs[0].GetPath())
 
 }
-func TestDetach(t *testing.T) {
+func TestDetachBranch(t *testing.T) {
 	//(0)-> 0|0|1[0]
 	//      (1)->|1|0|0|0|0[0] if we detach at last bit of the branch, the whole branch should be deleted
 	paths := []string{

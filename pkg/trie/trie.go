@@ -94,7 +94,9 @@ func (t *BinaryTrie[T]) IsBranch() bool {
 	return t.GetSibling() != nil
 }
 
-func (t *BinaryTrie[T]) Remove() {
+// Detach will discount the node from the tree
+// if there is no reference to the node, it will be GC'ed
+func (t *BinaryTrie[T]) Detach() {
 	if !t.isRoot() {
 		t.Parent.Children[t.GetPos()] = nil
 	} else {
@@ -103,12 +105,15 @@ func (t *BinaryTrie[T]) Remove() {
 }
 
 // removes current node, and the whole branch
+// and return the parent of last removed node
 // this will remove any parent that had only one child until it
 // reaches a parant that have 2 children (beginning of the branch)
 // node(branch) -->node-->node-->node
 //
 //	l>node-->node-->node (Dutch)
 //	[remove all the branch]
+//
+// will return the branch node parent
 func (t *BinaryTrie[T]) DetachBranch(limit int) *BinaryTrie[T] {
 	// if it has children
 	if t.isRoot() {
@@ -124,9 +129,9 @@ func (t *BinaryTrie[T]) DetachBranch(limit int) *BinaryTrie[T] {
 		return !next.IsBranch() && next.depth > limit
 	})
 
-	nearestBranchedNode.Remove()
+	nearestBranchedNode.Detach()
 
-	return t
+	return nearestBranchedNode.Parent
 }
 
 // checks if the node is a leaf (has no children).

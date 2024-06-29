@@ -77,9 +77,9 @@ func (t *BinaryTrie[T]) AddSibling(sibling *BinaryTrie[T]) *BinaryTrie[T] {
 //
 //	node.GetChildAt(trie.Zero)
 func (t *BinaryTrie[T]) GetChildAt(at ChildPos) *BinaryTrie[T] {
-	// TODO: user can get nil
+
 	if t == nil {
-		panic("Unexpected nil value")
+		panic("[BUG] GetChildAt: struct must not be nil nil")
 	}
 
 	return t.Children[at]
@@ -100,7 +100,7 @@ func (t *BinaryTrie[T]) Detach() {
 	if !t.isRoot() {
 		t.Parent.Children[t.GetPos()] = nil
 	} else {
-		panic("You can not remove the root")
+		panic("[BUG] Detach: You can not Detach the root")
 	}
 }
 
@@ -117,7 +117,7 @@ func (t *BinaryTrie[T]) Detach() {
 func (t *BinaryTrie[T]) DetachBranch(limit int) *BinaryTrie[T] {
 	// if it has children
 	if t.isRoot() {
-		panic("You can not detach Root")
+		panic("[Bug] DetachBranch: You can not detach Root")
 	}
 	nearestBranchedNode := t
 	t.ForEachStepUp(func(next *BinaryTrie[T]) {

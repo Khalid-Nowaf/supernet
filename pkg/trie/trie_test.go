@@ -129,7 +129,32 @@ func TestGetSibling(t *testing.T) {
 	assert.Nil(t, leafs[1].GetSibling())
 }
 
-func TestRemove(t *testing.T) {
+func TestAddSibling(t *testing.T) {
+	paths := []string{"0010", "0011", "00111"}
+	root := NewTrie()
+	generateTrieAs(paths, root)
+
+	leafs := root.GetLeafs()
+	assert.NotNil(t, leafs[0].GetSibling())
+	assert.Nil(t, leafs[1].GetSibling())
+	sibling := NewTrie()
+	leafs[1].AddSibling(sibling)
+	assert.Equal(t, sibling, leafs[1].GetSibling())
+
+}
+
+func TestAddSiblingIfExist(t *testing.T) {
+	paths := []string{"0010", "0011", "00111"}
+	root := NewTrie()
+	generateTrieAs(paths, root)
+
+	leafs := root.GetLeafs()
+	assert.NotNil(t, leafs[0].GetSibling())
+	sibling := NewTrie()
+	leafs[0].AddSibling(sibling)
+	assert.NotEqual(t, sibling, leafs[0].GetSibling())
+}
+
 	paths := []string{"0010", "0011"}
 	root := NewTrie()
 	generateTrieAs(paths, root)

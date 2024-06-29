@@ -69,6 +69,10 @@ func (t *BinaryTrie[T]) AddChildOrReplaceAt(child *BinaryTrie[T], at ChildPos) *
 	return child
 }
 
+func (t *BinaryTrie[T]) AddSibling(sibling *BinaryTrie[T]) *BinaryTrie[T] {
+	return t.Parent.AddChildAtIfNotExist(sibling, t.GetPos()^1)
+}
+
 // returns the child node Zero or One
 //
 //	node.GetChildAt(trie.Zero)

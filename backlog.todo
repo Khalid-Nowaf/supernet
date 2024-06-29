@@ -8,3 +8,10 @@
     ✔ @Feat(Supernet): add recursive conflict resolution during splitting @high @high @done(24-06-25 20:32)
         ✔ replace AddChildIfNotExist with super.Insert and refactor the code if needed @done(24-06-25 20:32)
         ✔ find a way if to detect if the conflicted was created during the insertion, to avoid conflict resolution @done(24-06-25 20:32)
+    ☐ @Refactor(Supernet): clean the code
+    ☐ @Docs(Supernet): rewrite the comments
+    ☐ @Refactor(Supernet): make the resolvers and actions easy to track
+    ☐ @feat(Supernet): make the supernet configurable 
+        ☐ @feat(Supernet): add custom comparator
+    
+

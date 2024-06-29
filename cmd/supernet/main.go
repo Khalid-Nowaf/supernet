@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
-	"github.com/khalid_nowaf/supernet"
+	"github.com/khalid_nowaf/supernet/pkg/supernet"
 )
 
 // ResolveCmd represents the command to resolve CIDR conflicts.
@@ -40,11 +40,8 @@ func (cmd *ResolveCmd) Run(ctx *kong.Context) error {
 // parseAndInsertCidrs parses a file and inserts CIDRs into the supernet.
 func parseAndInsertCidrs(super *supernet.Supernet, cmd *ResolveCmd, file string) error {
 	return parseCsv(cmd, file, func(cidr *CIDR) error {
-		fmt.Printf("\nInserting CIDR: %s with P %v ...\n", cidr.cidr.String(), cidr.Priority)
-		results := super.InsertCidr(cidr.cidr, cidr.Metadata)
-		for _, r := range results {
-			fmt.Printf(r.String())
-		}
+		result := super.InsertCidr(cidr.cidr, cidr.Metadata)
+		fmt.Println(result.String())
 		return nil
 	})
 }
@@ -67,13 +64,13 @@ func writeJsonResults(super *supernet.Supernet, directory string, cidrCol string
 	}
 
 	for i, cidr := range cidrs {
-		cidr.Metadata.Attributes[cidrCol] = supernet.NodeToCidr(cidr)
+		cidr.Metadata().Attributes[cidrCol] = supernet.NodeToCidr(cidr)
 		if i > 0 {
 			if _, err = file.Write([]byte(",")); err != nil {
 				return err
 			}
 		}
-		if err = encoder.Encode(cidr.Metadata.Attributes); err != nil {
+		if err = encoder.Encode(cidr.Metadata().Attributes); err != nil {
 			return err
 		}
 	}
@@ -104,7 +101,7 @@ func writeCsvResults(super *supernet.Supernet, directory string, cidrCol string)
 
 	// Optional: Write headers to the CSV file
 	headers := []string{}
-	for key := range cidrs[0].Metadata.Attributes {
+	for key := range cidrs[0].Metadata().Attributes {
 		headers = append(headers, key)
 	}
 	if err := writer.Write(headers); err != nil {
@@ -113,11 +110,11 @@ func writeCsvResults(super *supernet.Supernet, directory string, cidrCol string)
 
 	// Write data to the CSV file
 	for _, cidr := range cidrs {
-		cidr.Metadata.Attributes[cidrCol] = supernet.NodeToCidr(cidr)
-		record := make([]string, 0, len(cidr.Metadata.Attributes))
+		cidr.Metadata().Attributes[cidrCol] = supernet.NodeToCidr(cidr)
+		record := make([]string, 0, len(cidr.Metadata().Attributes))
 		// Ensure the fields are written in the same order as headers
 		for _, header := range headers {
-			record = append(record, cidr.Metadata.Attributes[header])
+			record = append(record, cidr.Metadata().Attributes[header])
 		}
 		if err := writer.Write(record); err != nil {
 			return err

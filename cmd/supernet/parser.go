@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/khalid_nowaf/supernet"
+	"github.com/khalid_nowaf/supernet/pkg/supernet"
 )
 
 type CIDR struct {

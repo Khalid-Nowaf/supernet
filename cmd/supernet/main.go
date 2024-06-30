@@ -56,7 +56,7 @@ func writeJsonResults(super *supernet.Supernet, directory string, cidrCol string
 	defer file.Close()
 
 	encoder := json.NewEncoder(file)
-	cidrs := super.GetAllV4Cidrs(false)
+	cidrs := super.AllCIDRS(false)
 
 	fmt.Println("Starting to write resolved CIDRs...")
 	if _, err = file.Write([]byte("[")); err != nil {
@@ -95,7 +95,7 @@ func writeCsvResults(super *supernet.Supernet, directory string, cidrCol string)
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	cidrs := super.GetAllV4Cidrs(false)
+	cidrs := super.AllCIDRS(false)
 
 	fmt.Println("Starting to write resolved CIDRs...")
 

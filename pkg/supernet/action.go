@@ -1,8 +1,6 @@
 package supernet
 
 import (
-	"fmt"
-
 	"github.com/khalid_nowaf/supernet/pkg/trie"
 )
 
@@ -124,33 +122,44 @@ func (_ SplitExistingCIDR) String() string {
 	return "Split Existing CIDR"
 }
 
-type ActionResult struct {
-	Action      Action
-	AddedCidrs  []trie.BinaryTrie[Metadata]
-	RemoveCidrs []trie.BinaryTrie[Metadata]
-}
-
-func (ar ActionResult) String() string {
-	addedCidrs := []string{}
-	removedCidrs := []string{}
-
-	for _, added := range ar.AddedCidrs {
-		addedCidrs = append(addedCidrs, NodeToCidr(&added))
-	}
-
-	for _, removed := range ar.RemoveCidrs {
-		removedCidrs = append(removedCidrs, NodeToCidr(&removed))
-	}
-
-	return fmt.Sprintf("Action Taken: %s, Added CIDRs: %v, Removed CIDRs: %v", ar.Action, addedCidrs, removedCidrs)
-}
-
-// to keep track of all the added CIDRs from resolving a conflict.
-func (ar *ActionResult) appendAddedCidr(cidr *trie.BinaryTrie[Metadata]) {
-	ar.AddedCidrs = append(ar.AddedCidrs, *cidr)
-}
-
 // to keep track of all removed CIDRs from resolving a conflict.
 func (ar *ActionResult) appendRemovedCidr(cidr *trie.BinaryTrie[Metadata]) {
 	ar.RemoveCidrs = append(ar.RemoveCidrs, *cidr)
+}
+
+// The function traverses from the sub-CIDR node upwards, attempting to insert a sibling node at each step.
+// If a sibling node at a given position does not exist, it is created and added. The traversal and modifications
+// stop when reaching the depth of the super-CIDR node.
+func splitAround(sub *trie.BinaryTrie[Metadata], newCidrMetadata *Metadata, limitDepth int) []*trie.BinaryTrie[Metadata] {
+	splittedCidrMetadata := newCidrMetadata
+
+	if splittedCidrMetadata == nil {
+		panic("[BUG] splitAround: Metadata is required to split a supernet")
+	}
+
+	var splittedCidrs []*trie.BinaryTrie[Metadata]
+
+	sub.ForEachStepUp(func(current *trie.BinaryTrie[Metadata]) {
+
+		// Create a new trie node with the same metadata as the splittedCidrMetadata.
+		newCidr := trie.NewTrieWithMetadata(&Metadata{
+			IsV6:       splittedCidrMetadata.IsV6,
+			originCIDR: splittedCidrMetadata.originCIDR,
+			Priority:   splittedCidrMetadata.Priority,
+			Attributes: splittedCidrMetadata.Attributes,
+		})
+
+		added := current.AttachSibling(newCidr)
+
+		if added == newCidr {
+			// If the node was successfully added, append it to the list of split CIDRs.
+			splittedCidrs = append(splittedCidrs, added)
+		} else {
+		}
+	}, func(nextNode *trie.BinaryTrie[Metadata]) bool {
+		// Stop propagation when reaching the depth of the super-CIDR.
+		return nextNode.Depth() > limitDepth
+	})
+
+	return splittedCidrs
 }

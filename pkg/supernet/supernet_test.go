@@ -96,7 +96,7 @@ func TestInsertAndRetrieveCidrs(t *testing.T) {
 	}
 
 	ipv4Results := []string{"1.0.0.0/8", "2.0.0.0/8", "3.0.0.0/8"}
-	assert.ElementsMatch(t, ipv4Results, super.getAllV4CidrsString(false), "IPv4 CIDR retrieval should match")
+	assert.ElementsMatch(t, ipv4Results, super.AllCidrsString(false), "IPv4 CIDR retrieval should match")
 
 	ipv6ExpectedPath := []int{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
 	assert.ElementsMatch(t, ipv6ExpectedPath, super.ipv6Cidrs.LeafsPaths()[0], "IPv6 path should match")
@@ -115,7 +115,7 @@ func TestEqualConflictLowPriory(t *testing.T) {
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
-	}, root.getAllV4CidrsString(false))
+	}, root.AllCidrsString(false))
 
 	assert.Equal(t, "high", root.ipv4Cidrs.Leafs()[0].Metadata().Attributes["cidr"])
 }
@@ -132,7 +132,7 @@ func TestEqualConflictHighPriory(t *testing.T) {
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
-	}, root.getAllV4CidrsString(false))
+	}, root.AllCidrsString(false))
 
 	assert.Equal(t, "high", root.ipv4Cidrs.Leafs()[0].Metadata().Attributes["cidr"])
 
@@ -149,7 +149,7 @@ func TestSubConflictLowPriority(t *testing.T) {
 	// subset
 	assert.ElementsMatch(t, []string{
 		"192.168.0.0/16",
-	}, root.getAllV4CidrsString(false))
+	}, root.AllCidrsString(false))
 }
 
 func TestSubConflictHighPriority(t *testing.T) {
@@ -161,7 +161,7 @@ func TestSubConflictHighPriority(t *testing.T) {
 	results := root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, originCIDR: sub, Attributes: makeCidrAtrr(sub.String())})
 	printPaths(root)
 	printResults(results)
-	allCidrs := root.getAllV4CidrsString(false)
+	allCidrs := root.AllCidrsString(false)
 
 	assert.Equal(t, len(allCidrs), 24-16+1)
 	assert.ElementsMatch(t, []string{
@@ -174,7 +174,7 @@ func TestSubConflictHighPriority(t *testing.T) {
 		"192.168.32.0/19",
 		"192.168.64.0/18",
 		"192.168.128.0/17",
-	}, root.getAllV4CidrsString(false))
+	}, root.AllCidrsString(false))
 }
 func TestSubConflictEqualPriority(t *testing.T) {
 	root := NewSupernet()
@@ -184,7 +184,7 @@ func TestSubConflictEqualPriority(t *testing.T) {
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, originCIDR: super, Attributes: makeCidrAtrr(super.String())})
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, originCIDR: sub, Attributes: makeCidrAtrr(sub.String())})
 
-	allCidrs := root.getAllV4CidrsString(false)
+	allCidrs := root.AllCidrsString(false)
 
 	assert.Equal(t, 24-16+1, len(allCidrs))
 
@@ -208,7 +208,7 @@ func TestSuperConflictLowPriority(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
 
-	allCidrs := root.getAllV4CidrsString(false)
+	allCidrs := root.AllCidrsString(false)
 
 	assert.Equal(t, 24-16+1, len(allCidrs))
 
@@ -233,7 +233,7 @@ func TestSuperConflictHighPriority(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, originCIDR: sub, Attributes: makeCidrAtrr(sub.String())})
 	root.InsertCidr(super, &Metadata{Priority: []uint8{1}, originCIDR: super, Attributes: makeCidrAtrr(super.String())})
 
-	allCidrs := root.getAllV4CidrsString(false)
+	allCidrs := root.AllCidrsString(false)
 
 	assert.Equal(t, 1, len(allCidrs))
 
@@ -250,7 +250,7 @@ func TestSuperConflictEqualPriority(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{0}, originCIDR: sub, Attributes: makeCidrAtrr(sub.String())})
 	result := root.InsertCidr(super, &Metadata{Priority: []uint8{0}, originCIDR: super, Attributes: makeCidrAtrr(super.String())})
 	printResults(result)
-	allCidrs := root.getAllV4CidrsString(false)
+	allCidrs := root.AllCidrsString(false)
 
 	assert.Equal(t, 24-16+1, len(allCidrs))
 
@@ -474,7 +474,7 @@ func TestNestedConflictResolution1(t *testing.T) {
 		"192.168.192.0/18",
 		"192.168.128.0/19",
 		"192.168.160.0/19",
-	}, root.getAllV4CidrsString(false))
+	}, root.AllCidrsString(false))
 }
 
 func TestNestedConflictResolution2(t *testing.T) {
@@ -527,7 +527,7 @@ func TestNestedConflictResolution2(t *testing.T) {
 		"192.168.64.0/18",
 		"192.168.128.0/18",
 		"192.168.192.0/18",
-	}, root.getAllV4CidrsString(false))
+	}, root.AllCidrsString(false))
 }
 
 func TestRemoveBranchWithLimit(t *testing.T) {
@@ -548,7 +548,7 @@ func TestRemoveBranchWithLimit(t *testing.T) {
 		printPaths(root)
 	}
 
-	assert.ElementsMatch(t, []string{"192.168.128.0/18"}, root.getAllV4CidrsString(false))
+	assert.ElementsMatch(t, []string{"192.168.128.0/18"}, root.AllCidrsString(false))
 }
 
 func makeCidrAtrr(cidr string) map[string]string {

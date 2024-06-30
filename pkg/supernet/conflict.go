@@ -93,7 +93,6 @@ func (_ SubCIDR) Resolve(existingSuperCidr *trie.BinaryTrie[Metadata], newSubCid
 
 	if comparator(newSubCidr.Metadata(), existingSuperCidr.Metadata()) {
 		// subcidr has higher priority
-
 		plan.AddAction(InsertNewCIDR{}, newSubCidr)
 		plan.AddAction(SplitExistingCIDR{}, existingSuperCidr)
 		plan.AddAction(RemoveExistingCIDR{}, existingSuperCidr)
@@ -106,4 +105,49 @@ func (_ SubCIDR) Resolve(existingSuperCidr *trie.BinaryTrie[Metadata], newSubCid
 
 func (_ SubCIDR) String() string {
 	return "Sub CIDR"
+}
+
+// CIDR conflict detection, it check the current node if it conflicts with other CIDRS
+func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int) ConflictType {
+	// Check if the current node is a new or path node without specific metadata.
+	if currentNode.Metadata() == nil {
+		// Determine if the current node is a supernet of the targeted CIDR.
+		if targetedDepth == currentNode.Depth() && !currentNode.IsLeaf() {
+			return SuperCIDR{} // The node spans over the area of the new CIDR.
+		} else {
+			return NoConflict{} // No conflict detected.
+		}
+	} else {
+		// Evaluate the relationship based on depths.
+		if currentNode.Depth() == targetedDepth {
+			return EqualCIDR{} // The node is at the same level as the targeted CIDR.
+		}
+		if currentNode.Depth() < targetedDepth {
+			return SubCIDR{} // The node is a subnetwork of the targeted CIDR.
+		}
+	}
+
+	// If none of the conditions are met, there's an unhandled case.
+	panic("[BUG] isThereAConflict: unhandled edge case encountered")
+}
+
+// comparator evaluates two trie nodes, `a` and `b`, to determine if the new node `a` should replace the old node `b`
+// based on their priority values. It is assumed that `a` is the new node and `b` is the old node.
+//
+// Note:
+//   - The function assumes that if all priorities of `a` are equal to `b`, then `a` should be greater than `b`.
+//   - The priorities are compared in a lexicographical order, similar to comparing version numbers or tuples.
+func comparator(a *Metadata, b *Metadata) bool {
+	// Compare priority values lexicographically.
+	for i := range a.Priority {
+		if a.Priority[i] > b.Priority[i] {
+
+			// If any priority of 'a' is less than 'b', return false immediately.
+			return true
+		} else if a.Priority[i] < b.Priority[i] {
+			return false
+		}
+	}
+	// they are equal, so a is greater
+	return true
 }

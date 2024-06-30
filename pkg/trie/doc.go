@@ -10,16 +10,16 @@
 //		    // Add child nodes
 //		    child1 := trie.NewTrieWithMetadata[string]("child1")
 //	     root := trie.NewTrieWithMetadata[string]("root")
-//		    root.AddChildOrReplaceAt(child1, trie.ZERO)
+//		    root.AddChild(child1, trie.ZERO)
 //
 //		    child2 := trie.NewTrieWithMetadata[string]("child2")
-//		    root.AddChildOrReplaceAt(child2, trie.ONE)
+//		    root.AddChild(child2, trie.ONE)
 //
 //		    // Check if a node is the root
 //		    fmt.Println("Is root:", root.isRoot()) // Output: Is root: true
 //
 //		    // Get the depth of a node
-//		    fmt.Println("Depth of child1:", child1.GetDepth()) // Output: Depth of child1: 1
+//		    fmt.Println("Depth of child1:", child1.Depth()) // Output: Depth of child1: 1
 //
 //		    // Check if a node is a leaf
 //		    fmt.Println("Is child1 a leaf:", child1.IsLeaf()) // Output: Is child1 a leaf: false

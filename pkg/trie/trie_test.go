@@ -96,7 +96,7 @@ func TestGetPath(t *testing.T) {
 	child := root.AttachChild(NewTrie(), ONE)
 	grandchild := child.AttachChild(NewTrie(), ZERO)
 
-	path := grandchild.GetPath()
+	path := grandchild.Path()
 	expectedPath := []int{1, 0}
 	assert.Equal(t, expectedPath, path, "Path should correctly represent the bits from root to grandchild")
 }
@@ -113,7 +113,7 @@ func TestGetUniquePaths(t *testing.T) {
 		{1, 0, 1, 0, 1, 0},
 		{1, 1, 1, 1},
 	}
-	actualPaths := root.GetLeafsPaths()
+	actualPaths := root.LeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 }
 
@@ -123,7 +123,7 @@ func TestGetSibling(t *testing.T) {
 	root := NewTrie()
 	generateTrieAs(paths, root)
 
-	leafs := root.GetLeafs()
+	leafs := root.Leafs()
 	assert.NotNil(t, leafs[0].Sibling())
 	assert.Equal(t, 1, leafs[0].Sibling().Pos())
 	assert.Nil(t, leafs[1].Sibling())
@@ -134,7 +134,7 @@ func TestAddSiblingIfNotExist(t *testing.T) {
 	root := NewTrie()
 	generateTrieAs(paths, root)
 
-	leafs := root.GetLeafs()
+	leafs := root.Leafs()
 	assert.NotNil(t, leafs[0].Sibling())
 	assert.Nil(t, leafs[1].Sibling())
 	sibling := NewTrie()
@@ -148,7 +148,7 @@ func TestAddSiblingIfExist(t *testing.T) {
 	root := NewTrie()
 	generateTrieAs(paths, root)
 
-	leafs := root.GetLeafs()
+	leafs := root.Leafs()
 	assert.NotNil(t, leafs[0].Sibling())
 	sibling := NewTrie()
 	leafs[0].AttachSibling(sibling)
@@ -162,20 +162,20 @@ func TestDetach(t *testing.T) {
 	assert.ElementsMatch(t, [][]int{
 		{0, 0, 1, 0},
 		{0, 0, 1, 1},
-	}, root.GetLeafsPaths())
-	leafs := root.GetLeafs()
+	}, root.LeafsPaths())
+	leafs := root.Leafs()
 
 	leafs[0].Detach()
 
-	newLeafs := root.GetLeafs()
+	newLeafs := root.Leafs()
 	assert.Equal(t, 1, len(newLeafs))
-	assert.Equal(t, []int{0, 0, 1, 1}, newLeafs[0].GetPath())
+	assert.Equal(t, []int{0, 0, 1, 1}, newLeafs[0].Path())
 
 	leafs[1].Detach()
 
-	newLeafs = root.GetLeafs()
+	newLeafs = root.Leafs()
 	assert.Equal(t, 1, len(newLeafs))
-	assert.Equal(t, []int{0, 0, 1}, newLeafs[0].GetPath())
+	assert.Equal(t, []int{0, 0, 1}, newLeafs[0].Path())
 
 }
 func TestDetachBranch(t *testing.T) {
@@ -191,9 +191,9 @@ func TestDetachBranch(t *testing.T) {
 	expectedPaths := [][]int{
 		{0, 0, 1, 0},
 	}
-	lastLeaf := root.GetLeafs()
+	lastLeaf := root.Leafs()
 	lastLeaf[1].DetachBranch(0)
-	actualPaths := root.GetLeafsPaths()
+	actualPaths := root.LeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 
 	// case where the bench is the first
@@ -207,9 +207,9 @@ func TestDetachBranch(t *testing.T) {
 	expectedPaths = [][]int{
 		{0, 1},
 	}
-	lastLeaf = root.GetLeafs()
+	lastLeaf = root.Leafs()
 	lastLeaf[1].DetachBranch(0)
-	actualPaths = root.GetLeafsPaths()
+	actualPaths = root.LeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 }
 
@@ -250,7 +250,7 @@ func BenchmarkRead32BitPaths(b *testing.B) {
 		}
 	}
 
-	paths = root.GetLeafsPaths()
+	paths = root.LeafsPaths()
 	maxPaths := len(paths)
 
 	b.ResetTimer()
@@ -260,7 +260,7 @@ func BenchmarkRead32BitPaths(b *testing.B) {
 		randomPath := paths[rand.Intn(maxPaths)]
 		for _, pos := range randomPath {
 			if node == nil {
-				fmt.Printf("Node is nil \npr node path: %v\n random path is:%v\n", pr.GetPath(), randomPath)
+				fmt.Printf("Node is nil \npr node path: %v\n random path is:%v\n", pr.Path(), randomPath)
 				panic("node is nil")
 			}
 			pr = node
@@ -280,7 +280,7 @@ func BenchmarkGetLeafPaths(b *testing.B) {
 	}
 
 	// b.ResetTimer() this is to fast, so it redo the benchmark forever!
-	root.GetLeafsPaths()
+	root.LeafsPaths()
 
 }
 

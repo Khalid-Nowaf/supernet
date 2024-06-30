@@ -47,7 +47,7 @@ func (_ SuperCIDR) Resolve(conflictPoint *trie.BinaryTrie[Metadata], newSuperCid
 
 	// since this is a super, we do not know how many subcidrs yet conflicting with this super
 	// let us get all subCidrs
-	conflictedSubCidrs := conflictPoint.GetLeafs()
+	conflictedSubCidrs := conflictPoint.Leafs()
 
 	subCidrsWithLowPriority := []*trie.BinaryTrie[Metadata]{}
 	subCidrsWithHighPriority := []*trie.BinaryTrie[Metadata]{}

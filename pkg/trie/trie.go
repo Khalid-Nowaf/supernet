@@ -2,25 +2,14 @@ package trie
 
 import "fmt"
 
-type Trie[T any] interface {
-	Parent() *Trie[T]
-	Metadata() *T
-	Pos() int
-	Depth() int
-	Child(pos int) *Trie[T]
-	Sibling() *Trie[T]
-	AttachChild(child *Trie[T], pos int) *Trie[T]
-	AttachSibling(sibling *Trie[T])
-	Detach()
-	DetachBranch()
-}
-
 // is an alias for int used to define child positions in a trie node.
 type ChildPos = int
 
 // Constants representing possible child positions in the trie.
-const ZERO ChildPos = 0
-const ONE ChildPos = 1
+const (
+	ZERO ChildPos = 0
+	ONE  ChildPos = 1
+)
 
 // BinaryTrie is a generic type representing a node in a trie.
 type BinaryTrie[T any] struct {
@@ -31,7 +20,7 @@ type BinaryTrie[T any] struct {
 	depth    int               // The depth of this node in the trie
 }
 
-// NewTrieWithMetadata creates a new trie node with the provided metadata and initializes it.
+// creates a new trie node with the provided metadata and initializes it.
 func NewTrieWithMetadata[T any](metadata *T) *BinaryTrie[T] {
 	return &BinaryTrie[T]{
 		metadata: metadata,
@@ -45,8 +34,8 @@ func NewTrie() *BinaryTrie[string] {
 	return NewTrieWithMetadata(&s)
 }
 
-// isRoot checks if the current node is the root of the trie.
-func (t *BinaryTrie[T]) isRoot() bool {
+// checks if the current node is the root of the trie.
+func (t *BinaryTrie[T]) IsRoot() bool {
 	return t.parent == nil
 }
 
@@ -58,15 +47,17 @@ func (t *BinaryTrie[T]) Pos() int {
 	return 0
 }
 
-// Depth returns the depth of the node in the trie.
+// returns the depth of the node in the trie.
 func (t *BinaryTrie[T]) Depth() int {
 	return t.depth
 }
 
+// return the parent node, it will return nil if the node is root node
 func (t *BinaryTrie[T]) Parent() *BinaryTrie[T] {
 	return t.parent
 }
 
+// return the generic metadata
 func (t *BinaryTrie[T]) Metadata() *T {
 	return t.metadata
 }
@@ -124,7 +115,7 @@ func (t *BinaryTrie[T]) IsBranch() bool {
 // Detach will discount the node from the tree
 // if there is no reference to the node, it will be GC'ed
 func (t *BinaryTrie[T]) Detach() {
-	if !t.isRoot() {
+	if !t.IsRoot() {
 		t.parent.children[t.Pos()] = nil
 	} else {
 		panic("[BUG] Detach: You can not Detach the root")
@@ -143,12 +134,12 @@ func (t *BinaryTrie[T]) Detach() {
 // will return the branch node parent
 func (t *BinaryTrie[T]) DetachBranch(limit int) *BinaryTrie[T] {
 	// if it has children
-	if t.isRoot() {
+	if t.IsRoot() {
 		panic("[Bug] DetachBranch: You can not detach Root")
 	}
 	nearestBranchedNode := t
 	t.ForEachStepUp(func(next *BinaryTrie[T]) {
-		if !next.parent.isRoot() {
+		if !next.parent.IsRoot() {
 			nearestBranchedNode = next.parent
 		}
 
@@ -163,17 +154,17 @@ func (t *BinaryTrie[T]) DetachBranch(limit int) *BinaryTrie[T] {
 
 // checks if the node is a leaf (has no children).
 func (t *BinaryTrie[T]) IsLeaf() bool {
-	return t.children[0] == nil && t.children[1] == nil
+	return t.children[ZERO] == nil && t.children[ONE] == nil
 }
 
 // applies a function to each non-nil child of the node.
 // will return the original node t
 func (t *BinaryTrie[T]) ForEachChild(f func(t *BinaryTrie[T])) *BinaryTrie[T] {
-	if t.children[0] != nil {
-		f(t.children[0])
+	if t.children[ZERO] != nil {
+		f(t.children[ZERO])
 	}
-	if t.children[1] != nil {
-		f(t.children[1])
+	if t.children[ONE] != nil {
+		f(t.children[ONE])
 	}
 	return t
 }
@@ -212,7 +203,7 @@ func (t *BinaryTrie[T]) ForEachStepUp(f func(*BinaryTrie[T]), while func(*Binary
 // return the path from the root node
 // the path is an array of 0's and 1's
 // reverse it if you need the path form the child to the root
-func (t *BinaryTrie[T]) GetPath() []int {
+func (t *BinaryTrie[T]) Path() []int {
 	path := []int{}
 
 	t.ForEachStepUp(func(tr *BinaryTrie[T]) {
@@ -224,7 +215,7 @@ func (t *BinaryTrie[T]) GetPath() []int {
 }
 
 // return all the leafs on the tree
-func (t *BinaryTrie[T]) GetLeafs() []*BinaryTrie[T] {
+func (t *BinaryTrie[T]) Leafs() []*BinaryTrie[T] {
 	leafs := []*BinaryTrie[T]{}
 	t.ForEachStepDown(func(t *BinaryTrie[T]) {
 		if t.IsLeaf() {
@@ -237,11 +228,11 @@ func (t *BinaryTrie[T]) GetLeafs() []*BinaryTrie[T] {
 // Generate an array of leafs paths which is uniq by definition
 // the path is from the root to leaf
 // reverse it if you need the path from leaf to root
-func (root *BinaryTrie[T]) GetLeafsPaths() [][]int {
+func (root *BinaryTrie[T]) LeafsPaths() [][]int {
 	paths := [][]int{}
 	root.ForEachStepDown(func(t *BinaryTrie[T]) {
 		if t.IsLeaf() {
-			paths = append(paths, t.GetPath())
+			paths = append(paths, t.Path())
 		}
 	}, nil)
 	return paths
@@ -255,7 +246,7 @@ func (t *BinaryTrie[T]) String(printOnLeaf func(*BinaryTrie[T]) string) {
 				extra = printOnLeaf(node)
 			}
 
-			fmt.Printf("%v %s\n", node.GetPath(), extra)
+			fmt.Printf("%v %s\n", node.Path(), extra)
 		}
 	}, nil)
 }

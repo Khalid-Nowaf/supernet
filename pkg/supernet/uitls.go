@@ -81,7 +81,7 @@ func NodeToCidr(t *trie.BinaryTrie[Metadata]) string {
 	}
 	// Convert the binary path of the trie node to CIDR format using the bitsToCidr function,
 	// then convert the resulting net.IPNet object to a string.
-	return BitsToCidr(t.GetPath(), t.Metadata().IsV6).String()
+	return BitsToCidr(t.Path(), t.Metadata().IsV6).String()
 }
 
 // CidrToBits converts a net.IPNet object into a slice of integers representing the binary bits of the network address.

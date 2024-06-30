@@ -99,7 +99,7 @@ func TestInsertAndRetrieveCidrs(t *testing.T) {
 	assert.ElementsMatch(t, ipv4Results, super.getAllV4CidrsString(false), "IPv4 CIDR retrieval should match")
 
 	ipv6ExpectedPath := []int{0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
-	assert.ElementsMatch(t, ipv6ExpectedPath, super.ipv6Cidrs.GetLeafsPaths()[0], "IPv6 path should match")
+	assert.ElementsMatch(t, ipv6ExpectedPath, super.ipv6Cidrs.LeafsPaths()[0], "IPv6 path should match")
 }
 
 func TestEqualConflictLowPriory(t *testing.T) {
@@ -117,7 +117,7 @@ func TestEqualConflictLowPriory(t *testing.T) {
 		"192.168.0.0/16",
 	}, root.getAllV4CidrsString(false))
 
-	assert.Equal(t, "high", root.ipv4Cidrs.GetLeafs()[0].Metadata().Attributes["cidr"])
+	assert.Equal(t, "high", root.ipv4Cidrs.Leafs()[0].Metadata().Attributes["cidr"])
 }
 
 func TestEqualConflictHighPriory(t *testing.T) {
@@ -134,7 +134,7 @@ func TestEqualConflictHighPriory(t *testing.T) {
 		"192.168.0.0/16",
 	}, root.getAllV4CidrsString(false))
 
-	assert.Equal(t, "high", root.ipv4Cidrs.GetLeafs()[0].Metadata().Attributes["cidr"])
+	assert.Equal(t, "high", root.ipv4Cidrs.Leafs()[0].Metadata().Attributes["cidr"])
 
 }
 
@@ -562,11 +562,11 @@ func printResults(results *InsertionResult) {
 }
 
 func printPaths(root *Supernet) {
-	for _, node := range root.ipv4Cidrs.GetLeafs() {
+	for _, node := range root.ipv4Cidrs.Leafs() {
 		if node.Metadata() != nil {
-			fmt.Printf("%v [%s] -> from [%s]\n", node.GetPath(), BitsToCidr(node.GetPath(), false).String(), node.Metadata().Attributes["cidr"])
+			fmt.Printf("%v [%s] -> from [%s]\n", node.Path(), BitsToCidr(node.Path(), false).String(), node.Metadata().Attributes["cidr"])
 		} else {
-			fmt.Printf("%v <-!!-- [%s] \n", node.GetPath(), BitsToCidr(node.GetPath(), false).String())
+			fmt.Printf("%v <-!!-- [%s] \n", node.Path(), BitsToCidr(node.Path(), false).String())
 		}
 	}
 }

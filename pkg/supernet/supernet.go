@@ -140,7 +140,7 @@ func (super *Supernet) GetAllV4Cidrs(forV6 bool) []*trie.BinaryTrie[Metadata] {
 	if forV6 {
 		supernet = super.ipv6Cidrs
 	}
-	return supernet.GetLeafs()
+	return supernet.Leafs()
 }
 
 // retrieves all CIDRs from the specified IPv4 or IPv6 trie within a supernet.
@@ -156,8 +156,8 @@ func (super *Supernet) getAllV4CidrsString(forV6 bool) []string {
 		supernet = super.ipv6Cidrs
 	}
 	var cidrs []string
-	for _, node := range supernet.GetLeafs() {
-		cidrs = append(cidrs, BitsToCidr(node.GetPath(), forV6).String())
+	for _, node := range supernet.Leafs() {
+		cidrs = append(cidrs, BitsToCidr(node.Path(), forV6).String())
 	}
 	return cidrs
 }

@@ -13,45 +13,45 @@ import (
 func TestNewTrie(t *testing.T) {
 	root := NewTrie()
 	assert.NotNil(t, root, "Trie should not be nil upon creation")
-	assert.Empty(t, *root.Metadata, "Metadata should be initialized to nil for a new boolean Trie")
-	assert.Equal(t, 0, root.GetDepth(), "Depth should be initialized to 0 for a new Trie")
+	assert.Empty(t, *root.metadata, "Metadata should be initialized to nil for a new boolean Trie")
+	assert.Equal(t, 0, root.Depth(), "Depth should be initialized to 0 for a new Trie")
 }
 
 // TestNewTrieWithMetadata verifies the initialization of a Trie node with specific metadata.
 func TestNewTrieWithMetadata(t *testing.T) {
 	root := NewTrie()
 	assert.NotNil(t, root, "Trie should not be nil upon creation")
-	assert.Equal(t, "", *root.Metadata, "Metadata should match the initialization value")
-	assert.Equal(t, 0, root.GetDepth(), "Depth should be initialized to 0 for a new Trie")
+	assert.Equal(t, "", *root.metadata, "Metadata should match the initialization value")
+	assert.Equal(t, 0, root.Depth(), "Depth should be initialized to 0 for a new Trie")
 }
 
 // TestAddChildAtIfNotExist verifies the behavior of adding a child node if it does not already exist.
 func TestAddChildAtIfNotExist(t *testing.T) {
 	root := NewTrie()
 	child := NewTrie()
-	addedChild := root.AddChildAtIfNotExist(child, ONE)
+	addedChild := root.AttachChild(child, ONE)
 
 	assert.Equal(t, child, addedChild, "Should return the added child")
-	assert.Equal(t, root, child.Parent, "Child's parent should be set correctly")
-	assert.Equal(t, 1, child.GetPos(), "Child's binary value should be true for position ONE")
-	assert.Equal(t, 1, child.GetDepth(), "Child's depth should increment by 1 from the parent")
+	assert.Equal(t, root, child.parent, "Child's parent should be set correctly")
+	assert.Equal(t, 1, child.Pos(), "Child's binary value should be true for position ONE")
+	assert.Equal(t, 1, child.Depth(), "Child's depth should increment by 1 from the parent")
 }
 
 // TestGetChildAt verifies retrieving children from specific positions.
 func TestGetChildAt(t *testing.T) {
 	root := NewTrie()
 	child := NewTrie()
-	root.AddChildAtIfNotExist(child, ZERO)
+	root.AttachChild(child, ZERO)
 
-	assert.Equal(t, child, root.GetChildAt(ZERO), "Should retrieve the child at position ZERO")
-	assert.Nil(t, root.GetChildAt(ONE), "Should return nil for an empty child position")
+	assert.Equal(t, child, root.Child(ZERO), "Should retrieve the child at position ZERO")
+	assert.Nil(t, root.Child(ONE), "Should return nil for an empty child position")
 }
 
 // TestForEachChild checks that ForEachChild iterates over all children correctly.
 func TestForEachChild(t *testing.T) {
 	root := NewTrie()
-	root.AddChildAtIfNotExist(NewTrie(), ZERO)
-	root.AddChildAtIfNotExist(NewTrie(), ONE)
+	root.AttachChild(NewTrie(), ZERO)
+	root.AttachChild(NewTrie(), ONE)
 
 	var count int
 	root.ForEachChild(func(t *BinaryTrie[string]) {
@@ -73,7 +73,7 @@ func TestForEachStepDown(t *testing.T) {
 
 	// Mark each visited node with "visited" in its metadata.
 	root.ForEachStepDown(func(tr *BinaryTrie[string]) {
-		tr.Metadata = strPtr("visited")
+		tr.metadata = strPtr("visited")
 	}, nil)
 
 	traverseAndVerify = func(tr *BinaryTrie[string]) {
@@ -81,8 +81,8 @@ func TestForEachStepDown(t *testing.T) {
 			return
 		}
 		tr.ForEachChild(func(c *BinaryTrie[string]) {
-			visitedPaths += strconv.Itoa(c.GetPos())
-			assert.Contains(t, *c.Metadata, "visited", "Metadata should contain 'visited'")
+			visitedPaths += strconv.Itoa(c.Pos())
+			assert.Contains(t, *c.metadata, "visited", "Metadata should contain 'visited'")
 			traverseAndVerify(c)
 		})
 	}
@@ -93,10 +93,10 @@ func TestForEachStepDown(t *testing.T) {
 // TestGetPath verifies that the path from the root to a specific node is correctly identified.
 func TestGetPath(t *testing.T) {
 	root := NewTrie()
-	child := root.AddChildAtIfNotExist(NewTrie(), ONE)
-	grandchild := child.AddChildAtIfNotExist(NewTrie(), ZERO)
+	child := root.AttachChild(NewTrie(), ONE)
+	grandchild := child.AttachChild(NewTrie(), ZERO)
 
-	path := grandchild.GetPath()
+	path := grandchild.Path()
 	expectedPath := []int{1, 0}
 	assert.Equal(t, expectedPath, path, "Path should correctly represent the bits from root to grandchild")
 }
@@ -113,7 +113,7 @@ func TestGetUniquePaths(t *testing.T) {
 		{1, 0, 1, 0, 1, 0},
 		{1, 1, 1, 1},
 	}
-	actualPaths := root.GetLeafsPaths()
+	actualPaths := root.LeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 }
 
@@ -123,10 +123,10 @@ func TestGetSibling(t *testing.T) {
 	root := NewTrie()
 	generateTrieAs(paths, root)
 
-	leafs := root.GetLeafs()
-	assert.NotNil(t, leafs[0].GetSibling())
-	assert.Equal(t, 1, leafs[0].GetSibling().GetPos())
-	assert.Nil(t, leafs[1].GetSibling())
+	leafs := root.Leafs()
+	assert.NotNil(t, leafs[0].Sibling())
+	assert.Equal(t, 1, leafs[0].Sibling().Pos())
+	assert.Nil(t, leafs[1].Sibling())
 }
 
 func TestAddSiblingIfNotExist(t *testing.T) {
@@ -134,12 +134,12 @@ func TestAddSiblingIfNotExist(t *testing.T) {
 	root := NewTrie()
 	generateTrieAs(paths, root)
 
-	leafs := root.GetLeafs()
-	assert.NotNil(t, leafs[0].GetSibling())
-	assert.Nil(t, leafs[1].GetSibling())
+	leafs := root.Leafs()
+	assert.NotNil(t, leafs[0].Sibling())
+	assert.Nil(t, leafs[1].Sibling())
 	sibling := NewTrie()
-	leafs[1].AddSibling(sibling)
-	assert.Equal(t, sibling, leafs[1].GetSibling())
+	leafs[1].AttachSibling(sibling)
+	assert.Equal(t, sibling, leafs[1].Sibling())
 
 }
 
@@ -148,11 +148,11 @@ func TestAddSiblingIfExist(t *testing.T) {
 	root := NewTrie()
 	generateTrieAs(paths, root)
 
-	leafs := root.GetLeafs()
-	assert.NotNil(t, leafs[0].GetSibling())
+	leafs := root.Leafs()
+	assert.NotNil(t, leafs[0].Sibling())
 	sibling := NewTrie()
-	leafs[0].AddSibling(sibling)
-	assert.NotEqual(t, sibling, leafs[0].GetSibling())
+	leafs[0].AttachSibling(sibling)
+	assert.NotEqual(t, sibling, leafs[0].Sibling())
 }
 
 func TestDetach(t *testing.T) {
@@ -162,20 +162,20 @@ func TestDetach(t *testing.T) {
 	assert.ElementsMatch(t, [][]int{
 		{0, 0, 1, 0},
 		{0, 0, 1, 1},
-	}, root.GetLeafsPaths())
-	leafs := root.GetLeafs()
+	}, root.LeafsPaths())
+	leafs := root.Leafs()
 
 	leafs[0].Detach()
 
-	newLeafs := root.GetLeafs()
+	newLeafs := root.Leafs()
 	assert.Equal(t, 1, len(newLeafs))
-	assert.Equal(t, []int{0, 0, 1, 1}, newLeafs[0].GetPath())
+	assert.Equal(t, []int{0, 0, 1, 1}, newLeafs[0].Path())
 
 	leafs[1].Detach()
 
-	newLeafs = root.GetLeafs()
+	newLeafs = root.Leafs()
 	assert.Equal(t, 1, len(newLeafs))
-	assert.Equal(t, []int{0, 0, 1}, newLeafs[0].GetPath())
+	assert.Equal(t, []int{0, 0, 1}, newLeafs[0].Path())
 
 }
 func TestDetachBranch(t *testing.T) {
@@ -191,9 +191,9 @@ func TestDetachBranch(t *testing.T) {
 	expectedPaths := [][]int{
 		{0, 0, 1, 0},
 	}
-	lastLeaf := root.GetLeafs()
+	lastLeaf := root.Leafs()
 	lastLeaf[1].DetachBranch(0)
-	actualPaths := root.GetLeafsPaths()
+	actualPaths := root.LeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 
 	// case where the bench is the first
@@ -207,9 +207,9 @@ func TestDetachBranch(t *testing.T) {
 	expectedPaths = [][]int{
 		{0, 1},
 	}
-	lastLeaf = root.GetLeafs()
+	lastLeaf = root.Leafs()
 	lastLeaf[1].DetachBranch(0)
-	actualPaths = root.GetLeafsPaths()
+	actualPaths = root.LeafsPaths()
 	assert.ElementsMatch(t, expectedPaths, actualPaths, "Unique paths should match the expected paths")
 }
 
@@ -227,7 +227,7 @@ func BenchmarkWrites32BitPaths(b *testing.B) {
 
 	for _, path := range paths {
 		for _, pos := range path {
-			root.AddChildAtIfNotExist(NewTrie(), pos)
+			root.AttachChild(NewTrie(), pos)
 		}
 	}
 
@@ -246,11 +246,11 @@ func BenchmarkRead32BitPaths(b *testing.B) {
 	root := NewTrie()
 	for _, path := range paths {
 		for _, pos := range path {
-			root.AddChildAtIfNotExist(NewTrie(), pos)
+			root.AttachChild(NewTrie(), pos)
 		}
 	}
 
-	paths = root.GetLeafsPaths()
+	paths = root.LeafsPaths()
 	maxPaths := len(paths)
 
 	b.ResetTimer()
@@ -260,11 +260,11 @@ func BenchmarkRead32BitPaths(b *testing.B) {
 		randomPath := paths[rand.Intn(maxPaths)]
 		for _, pos := range randomPath {
 			if node == nil {
-				fmt.Printf("Node is nil \npr node path: %v\n random path is:%v\n", pr.GetPath(), randomPath)
+				fmt.Printf("Node is nil \npr node path: %v\n random path is:%v\n", pr.Path(), randomPath)
 				panic("node is nil")
 			}
 			pr = node
-			node = node.GetChildAt(pos)
+			node = node.Child(pos)
 		}
 	}
 
@@ -275,12 +275,12 @@ func BenchmarkGetLeafPaths(b *testing.B) {
 	root := NewTrie()
 	for _, path := range paths {
 		for _, pos := range path {
-			root.AddChildAtIfNotExist(NewTrie(), pos)
+			root.AttachChild(NewTrie(), pos)
 		}
 	}
 
 	// b.ResetTimer() this is to fast, so it redo the benchmark forever!
-	root.GetLeafsPaths()
+	root.LeafsPaths()
 
 }
 
@@ -289,11 +289,11 @@ func generateTrieAs(paths []string, trie *BinaryTrie[string]) {
 	for _, path := range paths {
 		current := trie
 		for _, bit := range path {
-			metadata := strPtr(*current.Metadata + string(bit) + " -> ")
+			metadata := strPtr(*current.metadata + string(bit) + " -> ")
 			if bit == '0' {
-				current = current.AddChildAtIfNotExist(NewTrieWithMetadata(metadata), ZERO)
+				current = current.AttachChild(NewTrieWithMetadata(metadata), ZERO)
 			} else {
-				current = current.AddChildAtIfNotExist(NewTrieWithMetadata(metadata), ONE)
+				current = current.AttachChild(NewTrieWithMetadata(metadata), ONE)
 			}
 		}
 	}

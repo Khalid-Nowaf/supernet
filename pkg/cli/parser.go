@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/csv"
@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/khalid_nowaf/supernet"
+	"github.com/khalid_nowaf/supernet/pkg/supernet"
 )
 
 type CIDR struct {
@@ -125,6 +125,7 @@ func parseCIDR(record Record, cmd *ResolveCmd) (*CIDR, error) {
 			priorities = append(priorities, uint8(i))
 		}
 	} else {
+		// TODO: check if the priority at same length, if not (mm maybe we fill the result with Zeros)
 		panic("No priorities values founded, use 0 as default " + cmd.PriorityKey)
 		priorities = []uint8{0}
 	}

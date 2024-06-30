@@ -3,8 +3,19 @@
     ☐ @Feat(Trie): Optimize feature to convert Trie to LCTrie @idea
     ☐ @Refactor(Supernet): extract binary operations to separate package @low
     ☐ @Refactor(Supernet): extract IPNet wrapping logic to file or a package @low
+    ☐ @Docs(Supernet): rewrite the comments
+    ☐ @Feat(CLI): detect file type from extension
+    ☐ @Feat(CLI): configurable output format
+    ✔ @Feat(CLI): logs flag @done(24-06-30 23:55)
     ✔ @Feat(Supernet): Build cmd `supernet` that take a file and resolve the conflict @high @done(24-06-25 20:32)
     ✔ @Feat(Supernet): add a report function to report what is conflicted and how it was resolved @high @done(24-06-25 20:32)
     ✔ @Feat(Supernet): add recursive conflict resolution during splitting @high @high @done(24-06-25 20:32)
         ✔ replace AddChildIfNotExist with super.Insert and refactor the code if needed @done(24-06-25 20:32)
         ✔ find a way if to detect if the conflicted was created during the insertion, to avoid conflict resolution @done(24-06-25 20:32)
+    ✔ @Refactor(Supernet): clean the code @done(24-06-30 23:32)
+    ✔ @Refactor(Supernet): make the resolvers and actions easy to track @done(24-06-30 23:32)
+    ✔ @feat(Supernet): make the supernet configurable @done(24-06-30 23:32)
+        ✔ @feat(Supernet): add custom comparator @done(24-06-30 23:32)
+        ✔ feat(Supernet): add custom logger @done(24-06-30 23:32)
+    
+

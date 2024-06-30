@@ -13,11 +13,15 @@ type Context struct {
 }
 
 var cli struct {
+	Log     bool       `help:"Print the details about the inserted CIDR and the conflicts if any"`
 	Resolve ResolveCmd `cmd:"" help:"Resolve CIDR conflicts"`
 }
 
 func NewCLI(super *supernet.Supernet) {
 	ctx := kong.Parse(&cli, kong.UsageOnError())
+	if cli.Log {
+		super = supernet.WithSimpleLogger()(super)
+	}
 	if err := ctx.Run(&Context{super: super}); err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}

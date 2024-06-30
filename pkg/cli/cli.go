@@ -17,7 +17,7 @@ var cli struct {
 }
 
 func NewCLI(super *supernet.Supernet) {
-	ctx := kong.Parse(cli, kong.UsageOnError())
+	ctx := kong.Parse(&cli, kong.UsageOnError())
 	if err := ctx.Run(&Context{super: super}); err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}

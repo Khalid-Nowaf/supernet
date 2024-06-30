@@ -1,4 +1,4 @@
-module github.com/khalid_nowaf/supernet
+module github.com/khalid-nowaf/supernet
 
 go 1.22.2
 

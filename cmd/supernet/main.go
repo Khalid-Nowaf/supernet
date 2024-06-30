@@ -6,5 +6,5 @@ import (
 )
 
 func main() {
-	cli.NewCLI(supernet.NewSupernet())
+	cli.NewCLI(supernet.NewSupernet(supernet.WithSimpleLogger()))
 }

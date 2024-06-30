@@ -19,8 +19,6 @@ type ResolveCmd struct {
 
 // Run executes the resolve command.
 func (cmd *ResolveCmd) Run(ctx *Context) error {
-	fmt.Printf("%v \n", *cmd)
-
 	for _, file := range cmd.Files {
 		if err := parseAndInsertCidrs(ctx.super, cmd, file); err != nil {
 			return err
@@ -36,8 +34,7 @@ func (cmd *ResolveCmd) Run(ctx *Context) error {
 // parseAndInsertCidrs parses a file and inserts CIDRs into the supernet.
 func parseAndInsertCidrs(super *supernet.Supernet, cmd *ResolveCmd, file string) error {
 	return parseCsv(cmd, file, func(cidr *CIDR) error {
-		result := super.InsertCidr(cidr.cidr, cidr.Metadata)
-		fmt.Println(result.String())
+		super.InsertCidr(cidr.cidr, cidr.Metadata)
 		return nil
 	})
 }

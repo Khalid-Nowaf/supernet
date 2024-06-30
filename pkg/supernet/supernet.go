@@ -33,6 +33,7 @@ type Supernet struct {
 	ipv4Cidrs  *trie.BinaryTrie[Metadata]
 	ipv6Cidrs  *trie.BinaryTrie[Metadata]
 	comparator ComparatorOption
+	logger     LoggerOption
 }
 
 // initializes a new supernet instance with separate tries for IPv4 and IPv6 CIDRs.
@@ -72,7 +73,7 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) *Inserti
 		path,
 		trie.NewTrieWithMetadata(copyMetadata),
 	)
-
+	super.logger(results)
 	return results
 }
 

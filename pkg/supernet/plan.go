@@ -1,6 +1,6 @@
 package supernet
 
-import "github.com/khalid_nowaf/supernet/pkg/trie"
+import "github.com/khalid-nowaf/supernet/pkg/trie"
 
 type PlanStep struct {
 	Action     Action

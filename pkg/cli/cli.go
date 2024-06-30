@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/kong"
-	"github.com/khalid_nowaf/supernet/pkg/supernet"
+	"github.com/khalid-nowaf/supernet/pkg/supernet"
 )
 
 // ResolveCmd represents the command to resolve CIDR conflicts.

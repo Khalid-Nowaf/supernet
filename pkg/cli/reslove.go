@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/khalid_nowaf/supernet/pkg/supernet"
+	"github.com/khalid-nowaf/supernet/pkg/supernet"
 )
 
 type ResolveCmd struct {

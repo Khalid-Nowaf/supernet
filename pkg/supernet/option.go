@@ -3,7 +3,7 @@ package supernet
 import (
 	"fmt"
 
-	"github.com/khalid_nowaf/supernet/pkg/trie"
+	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 type Option func(*Supernet) *Supernet

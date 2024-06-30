@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/khalid_nowaf/supernet/pkg/trie"
+	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 // records the outcome of attempting to insert a CIDR for reporting

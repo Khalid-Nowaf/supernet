@@ -3,7 +3,7 @@ package supernet
 import (
 	"net"
 
-	"github.com/khalid_nowaf/supernet/pkg/trie"
+	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 // BitsToCidr converts a slice of binary bits into a net.IPNet structure that represents a CIDR.

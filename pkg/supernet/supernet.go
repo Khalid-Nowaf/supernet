@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/khalid_nowaf/supernet/pkg/trie"
+	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 // holds the properties for a CIDR node

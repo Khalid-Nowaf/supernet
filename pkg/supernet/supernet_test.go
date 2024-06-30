@@ -80,7 +80,7 @@ func TestTrieComparator(t *testing.T) {
 	for _, comp := range comparisons {
 		a.UpdateMetadata(&Metadata{Priority: comp.aPriority})
 		b.UpdateMetadata(&Metadata{Priority: comp.bPriority})
-		assert.Equal(t, comp.expected, comparator(a.Metadata(), b.Metadata()))
+		assert.Equal(t, comp.expected, DefaultComparator(a.Metadata(), b.Metadata()))
 	}
 }
 

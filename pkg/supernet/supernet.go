@@ -30,16 +30,18 @@ func NewMetadata(ipnet *net.IPNet) *Metadata {
 
 // Supernet represents a structure containing both IPv4 and IPv6 CIDRs, each stored in a separate trie.
 type Supernet struct {
-	ipv4Cidrs *trie.BinaryTrie[Metadata]
-	ipv6Cidrs *trie.BinaryTrie[Metadata]
+	ipv4Cidrs  *trie.BinaryTrie[Metadata]
+	ipv6Cidrs  *trie.BinaryTrie[Metadata]
+	comparator ComparatorOption
 }
 
 // initializes a new supernet instance with separate tries for IPv4 and IPv6 CIDRs.
-func NewSupernet() *Supernet {
-	return &Supernet{
-		ipv4Cidrs: &trie.BinaryTrie[Metadata]{},
-		ipv6Cidrs: &trie.BinaryTrie[Metadata]{},
+func NewSupernet(options ...Option) *Supernet {
+	super := DefaultOptions()
+	for _, option := range options {
+		super = option(super)
 	}
+	return super
 }
 
 // InsertCidr attempts to insert a new CIDR into the supernet, handling conflicts according to predefined priorities.
@@ -65,7 +67,7 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) *Inserti
 	// add size of the subnet as priory
 	copyMetadata.Priority = append(copyMetadata.Priority, uint8(depth))
 	copyMetadata.originCIDR = ipnet
-	results := insertLeaf(
+	results := super.insertLeaf(
 		root,
 		path,
 		trie.NewTrieWithMetadata(copyMetadata),
@@ -155,7 +157,7 @@ func buildPath(root *trie.BinaryTrie[Metadata], path []int) (lastNode *trie.Bina
 }
 
 // try to build the CIDR path, and handle any conflict if any
-func insertLeaf(root *trie.BinaryTrie[Metadata], path []int, newCidrNode *trie.BinaryTrie[Metadata]) *InsertionResult {
+func (super Supernet) insertLeaf(root *trie.BinaryTrie[Metadata], path []int, newCidrNode *trie.BinaryTrie[Metadata]) *InsertionResult {
 	insertionResults := &InsertionResult{
 		CIDR: newCidrNode.Metadata().originCIDR,
 	}
@@ -167,7 +169,7 @@ func insertLeaf(root *trie.BinaryTrie[Metadata], path []int, newCidrNode *trie.B
 
 	// based on the conflict we will get resolve
 	// and the resolver will return a resolution plan for each conflict
-	plan := conflictType.Resolve(lastNode, newCidrNode)
+	plan := conflictType.Resolve(lastNode, newCidrNode, super.comparator)
 	insertionResults.ConflictedWith = append(insertionResults.ConflictedWith, plan.Conflicts...)
 
 	for _, step := range plan.Steps {
@@ -177,4 +179,49 @@ func insertLeaf(root *trie.BinaryTrie[Metadata], path []int, newCidrNode *trie.B
 	}
 
 	return insertionResults
+}
+
+// CIDR conflict detection, it check the current node if it conflicts with other CIDRS
+func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int) ConflictType {
+	// Check if the current node is a new or path node without specific metadata.
+	if currentNode.Metadata() == nil {
+		// Determine if the current node is a supernet of the targeted CIDR.
+		if targetedDepth == currentNode.Depth() && !currentNode.IsLeaf() {
+			return SuperCIDR{} // The node spans over the area of the new CIDR.
+		} else {
+			return NoConflict{} // No conflict detected.
+		}
+	} else {
+		// Evaluate the relationship based on depths.
+		if currentNode.Depth() == targetedDepth {
+			return EqualCIDR{} // The node is at the same level as the targeted CIDR.
+		}
+		if currentNode.Depth() < targetedDepth {
+			return SubCIDR{} // The node is a subnetwork of the targeted CIDR.
+		}
+	}
+
+	// If none of the conditions are met, there's an unhandled case.
+	panic("[BUG] isThereAConflict: unhandled edge case encountered")
+}
+
+// evaluates two trie nodes, `a` and `b`, to determine if the new node `a` should replace the old node `b`
+// based on their priority values. It is assumed that `a` is the new node and `b` is the old node.
+//
+// Note:
+//   - The function assumes that if all priorities of `a` are equal to `b`, then `a` should be greater than `b`.
+//   - The priorities are compared in a lexicographical order, similar to comparing version numbers or tuples.
+func DefaultComparator(a *Metadata, b *Metadata) bool {
+	// Compare priority values lexicographically.
+	for i := range a.Priority {
+		if a.Priority[i] > b.Priority[i] {
+
+			// If any priority of 'a' is less than 'b', return false immediately.
+			return true
+		} else if a.Priority[i] < b.Priority[i] {
+			return false
+		}
+	}
+	// they are equal, so a is greater
+	return true
 }

@@ -2,8 +2,6 @@ package supernet
 
 import (
 	"net"
-
-	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 // BitsToCidr converts a slice of binary bits into a net.IPNet structure that represents a CIDR.
@@ -75,7 +73,7 @@ func BitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 //
 //	Given a trie node representing an IP address with metadata, this function will output the address in CIDR format,
 //	 like "192.168.1.0/24" for IPv4 or "2001:db8::/32" for IPv6.
-func NodeToCidr(t *trie.BinaryTrie[Metadata]) string {
+func NodeToCidr(t *CidrTrie) string {
 	if t.Metadata() == nil {
 		panic("[Bug] NodeToCidr: Cannot convert a trie path node to CIDR, metadata is missing")
 	}

@@ -8,6 +8,8 @@ import (
 	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
+type CidrTrie = trie.BinaryTrie[Metadata]
+
 // holds the properties for a CIDR node
 type Metadata struct {
 	originCIDR *net.IPNet        // copy of the CIDR, to track it, if it get splitted later due to conflict resolution
@@ -30,8 +32,8 @@ func NewMetadata(ipnet *net.IPNet) *Metadata {
 
 // Supernet represents a structure containing both IPv4 and IPv6 CIDRs, each stored in a separate trie.
 type Supernet struct {
-	ipv4Cidrs  *trie.BinaryTrie[Metadata]
-	ipv6Cidrs  *trie.BinaryTrie[Metadata]
+	ipv4Cidrs  *CidrTrie
+	ipv6Cidrs  *CidrTrie
 	comparator ComparatorOption
 	logger     LoggerOption
 }
@@ -114,7 +116,7 @@ func (super *Supernet) LookupIP(ip string) (*net.IPNet, error) {
 }
 
 // retrieves all CIDRs from the specified IPv4 or IPv6 trie within a supernet.
-func (super *Supernet) AllCIDRS(forV6 bool) []*trie.BinaryTrie[Metadata] {
+func (super *Supernet) AllCIDRS(forV6 bool) []*CidrTrie {
 	supernet := super.ipv4Cidrs
 	if forV6 {
 		supernet = super.ipv6Cidrs
@@ -136,12 +138,12 @@ func (super *Supernet) AllCidrsString(forV6 bool) []string {
 }
 
 // creates a new trie node intended for path utilization without any associated metadata.
-func newPathNode() *trie.BinaryTrie[Metadata] {
-	return &trie.BinaryTrie[Metadata]{}
+func newPathNode() *CidrTrie {
+	return &CidrTrie{}
 }
 
 // build the CIDR path, and report any conflict
-func buildPath(root *trie.BinaryTrie[Metadata], path []int) (lastNode *trie.BinaryTrie[Metadata], conflict ConflictType, remainingPath []int) {
+func buildPath(root *CidrTrie, path []int) (lastNode *CidrTrie, conflict ConflictType, remainingPath []int) {
 	currentNode := root
 	for currentDepth, bit := range path {
 		// add a pathNode, if the current node is nil
@@ -158,7 +160,7 @@ func buildPath(root *trie.BinaryTrie[Metadata], path []int) (lastNode *trie.Bina
 }
 
 // try to build the CIDR path, and handle any conflict if any
-func (super Supernet) insertLeaf(root *trie.BinaryTrie[Metadata], path []int, newCidrNode *trie.BinaryTrie[Metadata]) *InsertionResult {
+func (super Supernet) insertLeaf(root *CidrTrie, path []int, newCidrNode *CidrTrie) *InsertionResult {
 	insertionResults := &InsertionResult{
 		CIDR: newCidrNode.Metadata().originCIDR,
 	}
@@ -183,7 +185,7 @@ func (super Supernet) insertLeaf(root *trie.BinaryTrie[Metadata], path []int, ne
 }
 
 // CIDR conflict detection, it check the current node if it conflicts with other CIDRS
-func isThereAConflict(currentNode *trie.BinaryTrie[Metadata], targetedDepth int) ConflictType {
+func isThereAConflict(currentNode *CidrTrie, targetedDepth int) ConflictType {
 	// Check if the current node is a new or path node without specific metadata.
 	if currentNode.Metadata() == nil {
 		// Determine if the current node is a supernet of the targeted CIDR.

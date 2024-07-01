@@ -3,16 +3,14 @@ package supernet
 import (
 	"fmt"
 	"net"
-
-	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 // records the outcome of attempting to insert a CIDR for reporting
 type InsertionResult struct {
-	CIDR           *net.IPNet                  // CIDR was attempted to be inserted.
-	actions        []*ActionResult             // the result of each action is taken
-	ConflictedWith []trie.BinaryTrie[Metadata] // array of conflicting nodes
-	ConflictType                               // the type of the conflict
+	CIDR           *net.IPNet      // CIDR was attempted to be inserted.
+	actions        []*ActionResult // the result of each action is taken
+	ConflictedWith []CidrTrie      // array of conflicting nodes
+	ConflictType                   // the type of the conflict
 }
 
 func (ir *InsertionResult) String() string {
@@ -36,8 +34,8 @@ func (ir *InsertionResult) String() string {
 
 type ActionResult struct {
 	Action      Action
-	AddedCidrs  []trie.BinaryTrie[Metadata]
-	RemoveCidrs []trie.BinaryTrie[Metadata]
+	AddedCidrs  []CidrTrie
+	RemoveCidrs []CidrTrie
 }
 
 func (ar ActionResult) String() string {
@@ -56,6 +54,6 @@ func (ar ActionResult) String() string {
 }
 
 // to keep track of all the added CIDRs from resolving a conflict.
-func (ar *ActionResult) appendAddedCidr(cidr *trie.BinaryTrie[Metadata]) {
+func (ar *ActionResult) appendAddedCidr(cidr *CidrTrie) {
 	ar.AddedCidrs = append(ar.AddedCidrs, *cidr)
 }

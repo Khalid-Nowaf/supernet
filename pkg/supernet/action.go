@@ -5,7 +5,7 @@ import (
 )
 
 type Action interface {
-	Execute(newCidr *trie.BinaryTrie[Metadata], conflictedPoint *trie.BinaryTrie[Metadata], targetNode *trie.BinaryTrie[Metadata], remainingPath []int) *ActionResult
+	Execute(newCidr *CidrTrie, conflictedPoint *CidrTrie, targetNode *CidrTrie, remainingPath []int) *ActionResult
 	String() string
 }
 
@@ -17,7 +17,7 @@ type (
 	SplitExistingCIDR  struct{} // split the existing CIDR `on` specific node
 )
 
-func (action IgnoreInsertion) Execute(_ *trie.BinaryTrie[Metadata], _ *trie.BinaryTrie[Metadata], _ *trie.BinaryTrie[Metadata], _ []int) *ActionResult {
+func (action IgnoreInsertion) Execute(_ *CidrTrie, _ *CidrTrie, _ *CidrTrie, _ []int) *ActionResult {
 	return &ActionResult{
 		Action: action,
 	}
@@ -27,7 +27,7 @@ func (_ IgnoreInsertion) String() string {
 	return "Ignore Insertion"
 }
 
-func (action InsertNewCIDR) Execute(newCidr *trie.BinaryTrie[Metadata], conflictedPoint *trie.BinaryTrie[Metadata], _ *trie.BinaryTrie[Metadata], remainingPath []int) *ActionResult {
+func (action InsertNewCIDR) Execute(newCidr *CidrTrie, conflictedPoint *CidrTrie, _ *CidrTrie, remainingPath []int) *ActionResult {
 
 	actionResult := &ActionResult{
 		Action: action,
@@ -60,7 +60,7 @@ func (_ InsertNewCIDR) String() string {
 	return "Insert New CIDR"
 }
 
-func (action RemoveExistingCIDR) Execute(newCidr *trie.BinaryTrie[Metadata], _ *trie.BinaryTrie[Metadata], targetNode *trie.BinaryTrie[Metadata], _ []int) *ActionResult {
+func (action RemoveExistingCIDR) Execute(newCidr *CidrTrie, _ *CidrTrie, targetNode *CidrTrie, _ []int) *ActionResult {
 
 	actionResult := &ActionResult{
 		Action: action,
@@ -83,7 +83,7 @@ func (_ RemoveExistingCIDR) String() string {
 	return "Remove Existing CIDR"
 }
 
-func (action SplitInsertedCIDR) Execute(newCidr *trie.BinaryTrie[Metadata], conflictedPoint *trie.BinaryTrie[Metadata], targetNode *trie.BinaryTrie[Metadata], _ []int) *ActionResult {
+func (action SplitInsertedCIDR) Execute(newCidr *CidrTrie, conflictedPoint *CidrTrie, targetNode *CidrTrie, _ []int) *ActionResult {
 
 	actionResult := &ActionResult{
 		Action: action,
@@ -103,7 +103,7 @@ func (_ SplitInsertedCIDR) String() string {
 	return "Split Inserted CIDR"
 }
 
-func (action SplitExistingCIDR) Execute(newCidr *trie.BinaryTrie[Metadata], conflictedPoint *trie.BinaryTrie[Metadata], targetNode *trie.BinaryTrie[Metadata], _ []int) *ActionResult {
+func (action SplitExistingCIDR) Execute(newCidr *CidrTrie, conflictedPoint *CidrTrie, targetNode *CidrTrie, _ []int) *ActionResult {
 	// init inserted result
 	actionResult := &ActionResult{
 		Action: action,
@@ -123,23 +123,23 @@ func (_ SplitExistingCIDR) String() string {
 }
 
 // to keep track of all removed CIDRs from resolving a conflict.
-func (ar *ActionResult) appendRemovedCidr(cidr *trie.BinaryTrie[Metadata]) {
+func (ar *ActionResult) appendRemovedCidr(cidr *CidrTrie) {
 	ar.RemoveCidrs = append(ar.RemoveCidrs, *cidr)
 }
 
 // The function traverses from the sub-CIDR node upwards, attempting to insert a sibling node at each step.
 // If a sibling node at a given position does not exist, it is created and added. The traversal and modifications
 // stop when reaching the depth of the super-CIDR node.
-func splitAround(sub *trie.BinaryTrie[Metadata], newCidrMetadata *Metadata, limitDepth int) []*trie.BinaryTrie[Metadata] {
+func splitAround(sub *CidrTrie, newCidrMetadata *Metadata, limitDepth int) []*CidrTrie {
 	splittedCidrMetadata := newCidrMetadata
 
 	if splittedCidrMetadata == nil {
 		panic("[BUG] splitAround: Metadata is required to split a supernet")
 	}
 
-	var splittedCidrs []*trie.BinaryTrie[Metadata]
+	var splittedCidrs []*CidrTrie
 
-	sub.ForEachStepUp(func(current *trie.BinaryTrie[Metadata]) {
+	sub.ForEachStepUp(func(current *CidrTrie) {
 
 		// Create a new trie node with the same metadata as the splittedCidrMetadata.
 		newCidr := trie.NewTrieWithMetadata(&Metadata{
@@ -156,7 +156,7 @@ func splitAround(sub *trie.BinaryTrie[Metadata], newCidrMetadata *Metadata, limi
 			splittedCidrs = append(splittedCidrs, added)
 		} else {
 		}
-	}, func(nextNode *trie.BinaryTrie[Metadata]) bool {
+	}, func(nextNode *CidrTrie) bool {
 		// Stop propagation when reaching the depth of the super-CIDR.
 		return nextNode.Depth() > limitDepth
 	})

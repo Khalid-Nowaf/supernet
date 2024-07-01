@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/khalid_nowaf/supernet/pkg/cli"
-	"github.com/khalid_nowaf/supernet/pkg/supernet"
+	"github.com/khalid-nowaf/supernet/pkg/cli"
+	"github.com/khalid-nowaf/supernet/pkg/supernet"
 )
 
 func main() {

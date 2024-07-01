@@ -1,12 +1,8 @@
 package supernet
 
-import (
-	"github.com/khalid-nowaf/supernet/pkg/trie"
-)
-
 type ConflictType interface {
 	String() string
-	Resolve(conflictedCidr *trie.BinaryTrie[Metadata], newCidr *trie.BinaryTrie[Metadata], comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan
+	Resolve(conflictedCidr *CidrTrie, newCidr *CidrTrie, comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan
 }
 
 type (
@@ -16,7 +12,7 @@ type (
 	SubCIDR    struct{} // the new CIDR is a sub CIDR of an existing super CIDR
 )
 
-func (_ NoConflict) Resolve(at *trie.BinaryTrie[Metadata], newCidr *trie.BinaryTrie[Metadata], comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
+func (_ NoConflict) Resolve(at *CidrTrie, newCidr *CidrTrie, comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
 	plan := &ResolutionPlan{}
 	plan.AddAction(InsertNewCIDR{}, at)
 	return plan
@@ -26,7 +22,7 @@ func (_ NoConflict) String() string {
 	return "No Conflict"
 }
 
-func (_ EqualCIDR) Resolve(conflictedCidr *trie.BinaryTrie[Metadata], newCidr *trie.BinaryTrie[Metadata], comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
+func (_ EqualCIDR) Resolve(conflictedCidr *CidrTrie, newCidr *CidrTrie, comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
 	plan := &ResolutionPlan{}
 	plan.Conflicts = append(plan.Conflicts, *conflictedCidr)
 	if comparator(newCidr.Metadata(), conflictedCidr.Metadata()) {
@@ -44,15 +40,15 @@ func (_ EqualCIDR) String() string {
 	return "Equal CIDR"
 }
 
-func (_ SuperCIDR) Resolve(conflictPoint *trie.BinaryTrie[Metadata], newSuperCidr *trie.BinaryTrie[Metadata], comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
+func (_ SuperCIDR) Resolve(conflictPoint *CidrTrie, newSuperCidr *CidrTrie, comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
 	plan := &ResolutionPlan{}
 
 	// since this is a super, we do not know how many subcidrs yet conflicting with this super
 	// let us get all subCidrs
 	conflictedSubCidrs := conflictPoint.Leafs()
 
-	subCidrsWithLowPriority := []*trie.BinaryTrie[Metadata]{}
-	subCidrsWithHighPriority := []*trie.BinaryTrie[Metadata]{}
+	subCidrsWithLowPriority := []*CidrTrie{}
+	subCidrsWithHighPriority := []*CidrTrie{}
 
 	for _, conflictedSubCidr := range conflictedSubCidrs {
 		plan.Conflicts = append(plan.Conflicts, *conflictedSubCidr)
@@ -86,7 +82,7 @@ func (_ SuperCIDR) String() string {
 	return "Super CIDR"
 }
 
-func (_ SubCIDR) Resolve(existingSuperCidr *trie.BinaryTrie[Metadata], newSubCidr *trie.BinaryTrie[Metadata], comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
+func (_ SubCIDR) Resolve(existingSuperCidr *CidrTrie, newSubCidr *CidrTrie, comparator func(a *Metadata, b *Metadata) bool) *ResolutionPlan {
 	plan := &ResolutionPlan{}
 	plan.Conflicts = append(plan.Conflicts, *existingSuperCidr)
 	// since this is a SubCidr, we have 2 option

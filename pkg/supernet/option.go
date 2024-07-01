@@ -2,8 +2,6 @@ package supernet
 
 import (
 	"fmt"
-
-	"github.com/khalid-nowaf/supernet/pkg/trie"
 )
 
 type Option func(*Supernet) *Supernet
@@ -12,8 +10,8 @@ type LoggerOption func(*InsertionResult)
 
 func DefaultOptions() *Supernet {
 	return &Supernet{
-		ipv4Cidrs:  &trie.BinaryTrie[Metadata]{},
-		ipv6Cidrs:  &trie.BinaryTrie[Metadata]{},
+		ipv4Cidrs:  &CidrTrie{},
+		ipv6Cidrs:  &CidrTrie{},
 		comparator: DefaultComparator,
 		logger:     func(ir *InsertionResult) {},
 	}

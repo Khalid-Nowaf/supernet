@@ -1,17 +1,15 @@
 package supernet
 
-import "github.com/khalid-nowaf/supernet/pkg/trie"
-
 type PlanStep struct {
 	Action     Action
-	TargetNode *trie.BinaryTrie[Metadata]
+	TargetNode *CidrTrie
 }
 type ResolutionPlan struct {
-	Conflicts []trie.BinaryTrie[Metadata]
+	Conflicts []CidrTrie
 	Steps     []*PlanStep
 }
 
-func (plan *ResolutionPlan) AddAction(action Action, on *trie.BinaryTrie[Metadata]) {
+func (plan *ResolutionPlan) AddAction(action Action, on *CidrTrie) {
 	plan.Steps = append(plan.Steps, &PlanStep{
 		Action:     action,
 		TargetNode: on,

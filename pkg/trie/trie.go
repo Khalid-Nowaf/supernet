@@ -173,17 +173,10 @@ func (t *BinaryTrie[T]) ForEachChild(f func(t *BinaryTrie[T])) *BinaryTrie[T] {
 // if no conation is needed you can pass nil as while parameter
 // will return the original node t
 func (t *BinaryTrie[T]) ForEachStepDown(f func(t *BinaryTrie[T]), while func(t *BinaryTrie[T]) bool) *BinaryTrie[T] {
-	t.forEachStepDown(f, while)
-	return t
-}
-
-// is a helper for ForEachStepDown to implement recursive traversal.
-// will return the original node t
-func (t *BinaryTrie[T]) forEachStepDown(f func(t *BinaryTrie[T]), while func(t *BinaryTrie[T]) bool) *BinaryTrie[T] {
 	t.ForEachChild(func(child *BinaryTrie[T]) {
 		if while == nil || while(t) {
 			f(child)
-			child.forEachStepDown(f, while)
+			child.ForEachStepDown(f, while)
 		}
 	})
 	return t
@@ -239,7 +232,7 @@ func (root *BinaryTrie[T]) LeafsPaths() [][]int {
 }
 
 func (t *BinaryTrie[T]) String(printOnLeaf func(*BinaryTrie[T]) string) {
-	t.forEachStepDown(func(node *BinaryTrie[T]) {
+	t.ForEachStepDown(func(node *BinaryTrie[T]) {
 		if node.IsLeaf() {
 			extra := ""
 			if printOnLeaf != nil {

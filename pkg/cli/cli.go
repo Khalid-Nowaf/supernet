@@ -19,7 +19,9 @@ var cli struct {
 
 func NewCLI(super *supernet.Supernet) {
 	ctx := kong.Parse(&cli, kong.UsageOnError())
+
 	if cli.Log {
+		// configure supernet to use simple logger
 		super = supernet.WithSimpleLogger()(super)
 	}
 	if err := ctx.Run(&Context{super: super}); err != nil {

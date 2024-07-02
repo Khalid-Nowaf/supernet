@@ -1,11 +1,19 @@
 ## Backlog:
-    ☐ @Refactor(Trie): to be an interface or more generic @low
     ☐ @Feat(Trie): Optimize feature to convert Trie to LCTrie @idea
     ☐ @Refactor(Supernet): extract binary operations to separate package @low
     ☐ @Refactor(Supernet): extract IPNet wrapping logic to file or a package @low
-    ☐ @Docs(Supernet): rewrite the comments
-    ☐ @Feat(CLI): detect file type from extension
-    ☐ @Feat(CLI): configurable output format
+    ☐ @Feat(Supernet): build storage layer, so the trie can be saved and loaded @big
+        ☐ @Feat(Storage): define file binary format which includes
+             ☐ tree 
+             ☐ metadata
+             ☐ data
+        ☐ @Feat(Storage): memory mapped Writer
+        ☐ @Feat(Storage): memory mapped Reader
+        ☐ @Feat(Storage): hot-swap storage at runtime
+        ☐ @Refactor(Supernet): make supernet compatible with storage layer
+    ☐ @Feat(CLI): add serve command that serve the tree lookups as http endpoint
+    ✔ @Refactor(Trie): to be an interface or more generic @low @done(24-07-02 22:30)
+    ✔ @Feat(CLI): configurable output format @done(24-07-02 22:27)
     ✔ @Feat(CLI): logs flag @done(24-06-30 23:55)
     ✔ @Feat(Supernet): Build cmd `supernet` that take a file and resolve the conflict @high @done(24-06-25 20:32)
     ✔ @Feat(Supernet): add a report function to report what is conflicted and how it was resolved @high @done(24-06-25 20:32)

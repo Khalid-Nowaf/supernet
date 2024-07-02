@@ -98,15 +98,15 @@ func main() {
 		if _, ipnet, err := net.ParseCIDR(network.cidr); err == nil {
 			
 			metadata := supernet.NewMetadata(ipnet)
-			 attributes is used to store any additional data about the network
+			// attributes is used to store any additional data about the network
 			metadata.Attributes["name"] = network.name
-			 optional, it will be used to resolve conflict
-			 if no priority add. the size of the network e.g /32, will be used as priority
-			 so it is grunted smaller network will be not be over taken by larger network
+			// optional, it will be used to resolve conflict
+			// if no priority add. the size of the network e.g /32, will be used as priority
+			// so it is grunted smaller network will be not be over taken by larger network
 			metadata.Priority = network.priorities
-			 result has information about the conflict and how it solve it
+			// result has information about the conflict and how it solve it
 			insertResult := super.InsertCidr(ipnet, metadata)
-			fmt.Println(insertResult.String())  see what happened
+			fmt.Println(insertResult.String()) // see what happened
 		}
 	}
 	// get all networks (it will return conflict free networks)

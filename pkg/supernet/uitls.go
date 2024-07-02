@@ -57,18 +57,6 @@ func BitsToCidr(bits []int, ipV6 bool) *net.IPNet {
 
 // NodeToCidr converts a given trie node into a CIDR (Classless Inter-Domain Routing) string representation.
 // This function uses the node's path to generate the CIDR string.
-//
-// Parameters:
-//   - t: Pointer to a trie.BinaryTrie node of type Metadata. It must contain valid metadata and a path.
-//   - isV6: A boolean indicating whether the IP version is IPv6. True means IPv6, false means IPv4.
-//
-// Returns:
-//   - A string representing the CIDR notation of the node's IP address.
-//
-// Panics:
-//   - If the node's metadata is nil, indicating that it is a path node without associated CIDR data,
-//     this function will panic with a specific error message.
-//
 // Example:
 //
 //	Given a trie node representing an IP address with metadata, this function will output the address in CIDR format,

@@ -275,7 +275,7 @@ func TestLookIPv4(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
 
-	cidr, err := root.LookupIP("192.168.25.154")
+	cidr, _, err := root.LookupIP("192.168.25.154")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cidr)
@@ -290,19 +290,19 @@ func TestLookIPv6(t *testing.T) {
 	root.InsertCidr(sub, &Metadata{Priority: []uint8{1}, Attributes: makeCidrAtrr(sub.String())})
 	root.InsertCidr(super, &Metadata{Priority: []uint8{0}, Attributes: makeCidrAtrr(super.String())})
 
-	cidr, err := root.LookupIP("2001:0db8:abcd:12:1234::")
+	cidr, _, err := root.LookupIP("2001:0db8:abcd:12:1234::")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cidr)
 	assert.Equal(t, "2001:db8:abcd:12:1234::/80", cidr.String())
 
-	cidr, err = root.LookupIP("2001:db8:abcd:12:1234::abcd")
+	cidr, _, err = root.LookupIP("2001:db8:abcd:12:1234::abcd")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cidr)
 	assert.Equal(t, "2001:db8:abcd:12:1234::/80", cidr.String())
 
-	cidr, err = root.LookupIP("2001:db8:abcd:12:0000::1")
+	cidr, _, err = root.LookupIP("2001:db8:abcd:12:0000::1")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cidr)

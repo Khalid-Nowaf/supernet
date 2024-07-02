@@ -27,6 +27,7 @@ func NewMetadata(ipnet *net.IPNet) *Metadata {
 	return &Metadata{
 		originCIDR: ipnet,
 		IsV6:       isV6,
+		Attributes: map[string]string{},
 	}
 }
 
@@ -80,7 +81,7 @@ func (super *Supernet) InsertCidr(ipnet *net.IPNet, metadata *Metadata) *Inserti
 }
 
 // LookupIP searches for the closest matching CIDR for a given IP address within the supernet.
-func (super *Supernet) LookupIP(ip string) (*net.IPNet, error) {
+func (super *Supernet) LookupIP(ip string) (*net.IPNet, *CidrTrie, error) {
 	// Determine if the IP is IPv4 or IPv6 based on the presence of a colon.
 	isV6 := strings.Contains(ip, ":")
 	mask := 32
@@ -94,7 +95,7 @@ func (super *Supernet) LookupIP(ip string) (*net.IPNet, error) {
 	// Parse the IP address with a full netmask to form a valid CIDR for bit conversion.
 	_, parsedIP, err := net.ParseCIDR(fmt.Sprintf("%s/%d", ip, mask))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	ipBits, _ := CidrToBits(parsedIP)
@@ -103,9 +104,9 @@ func (super *Supernet) LookupIP(ip string) (*net.IPNet, error) {
 	for i, bit := range ipBits {
 		if supernet == nil {
 			// Return nil if no matching CIDR is found in the trie.
-			return nil, nil
+			return nil, nil, nil
 		} else if supernet.IsLeaf() {
-			return BitsToCidr(ipBits[:i], isV6), nil
+			return BitsToCidr(ipBits[:i], isV6), supernet, nil
 		} else {
 			supernet = supernet.Child(bit)
 		}

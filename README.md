@@ -4,7 +4,7 @@
 
 ## Features
 - **In-Place Conflict Resolution**: Automatically resolves conflicts during CIDR insertions based on the CIDR priorities.
-- **Simple Priority Comparison***: Priorities are compared in lexicographical order, similar to comparing version numbers or tuples
+- **Simple Priority Comparison**: Priorities are compared in lexicographical order, similar to comparing version numbers or tuples
 - **Generic Metadata**: This module supports genetic metadata for CIDRs, making it easy to add custom data for CIDRs.
 - **Small Memory Footprint**: designed to minimize memory usage while maintaining fast access and modification speeds.
 - **IP Lookups**: Once Supernet loads all CIDRs, it's ready to lookup IP and return the associated CIDR and its Metadata.
@@ -14,19 +14,12 @@
 
 ## Installation
 
-To install `Supernet`, ensure you have Go installed on your machine (version 1.13 or later is recommended). Install the package by executing:
+To install `Supernet` ensure you have Go installed on your machine (version 1.13 or later is recommended). Install the package by executing:
 
 ```sh
 go get github.com/khalid-nowaf/supernet
 ```
 
-## Installation
-
-To install `supernet`, you must have Go installed on your machine (version 1.13 or later recommended). Install the package by running:
-
-```sh
-go get github.com/khalid-nowaf/supernet
-```
 
 ## Usage
 Below are some examples of how you can use the supernet package to manage network CIDRs:
@@ -53,12 +46,13 @@ Flags:
       --drop-keys=,...         Keys/Columns to be dropped
       --split-ip-versions      Split the results in to separate files based on the CIDR IP version
 ```
+## Supernet package 
 ### Initializing a Supernet
 ```go
 package main
 
 import (
-    "github.com/khalid-nowaf/supernet"
+    "github.com/khalid-nowaf/supernet/pkg/supernet"
 )
 
 func main() {

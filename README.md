@@ -3,11 +3,12 @@
 `Supernet` is a conflict-free CIDR Database (network store).
 
 ## Features
-- **In-Place Conflict Resolution**: Automatically resolves conflicts during CIDR insertions, based on the CIDR priorities.
-- **Generic Metadata**: Supports genetic metadata for CIDRs, making it easy to add custom data for CIDRs.
+- **In-Place Conflict Resolution**: Automatically resolves conflicts during CIDR insertions based on the CIDR priorities.
+- **Simple Priority Comparison***: Priorities are compared in lexicographical order, similar to comparing version numbers or tuples
+- **Generic Metadata**: This module supports genetic metadata for CIDRs, making it easy to add custom data for CIDRs.
 - **Small Memory Footprint**: designed to minimize memory usage while maintaining fast access and modification speeds.
 - **IP Lookups**: Once Supernet loads all CIDRs, it's ready to lookup IP and return the associated CIDR and its Metadata.
-- **Fixable CLI**: Shipped with simple and configurable CLI that can resolve conflicts in files (JSON, CSV and TSV).
+- **Fixable CLI**: Shipped with simple and configurable CLI that can resolve conflicts in files (JSON, CSV, and TSV).
 
 
 
@@ -21,7 +22,7 @@ go get github.com/khalid-nowaf/supernet
 
 ## Installation
 
-To install `supernet`, you need to have Go installed on your machine (version 1.13 or later recommended). Install the package by running:
+To install `supernet`, you must have Go installed on your machine (version 1.13 or later recommended). Install the package by running:
 
 ```sh
 go get github.com/khalid-nowaf/supernet

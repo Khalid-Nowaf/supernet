@@ -1,5 +1,5 @@
 # .github/workflows/release.yaml
-
+name: Release Supernet CLI
 on:
   release:
     types: [created]
